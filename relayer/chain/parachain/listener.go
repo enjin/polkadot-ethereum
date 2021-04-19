@@ -6,6 +6,7 @@ package parachain
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -14,14 +15,16 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/polkadot-ethereum/relayer/chain"
+	"github.com/snowfork/polkadot-ethereum/relayer/substrate"
 	chainTypes "github.com/snowfork/polkadot-ethereum/relayer/substrate"
 )
 
 type Listener struct {
-	config   *Config
-	conn     *Connection
-	messages chan<- []chain.Message
-	log      *logrus.Entry
+	config       *Config
+	conn         *Connection
+	messages     chan<- []chain.Message
+	messagesSync sync.Once
+	log          *logrus.Entry
 }
 
 func NewListener(config *Config, conn *Connection, messages chan<- []chain.Message, log *logrus.Entry) *Listener {
@@ -33,28 +36,41 @@ func NewListener(config *Config, conn *Connection, messages chan<- []chain.Messa
 	}
 }
 
-func (li *Listener) Start(ctx context.Context, eg *errgroup.Group) error {
+func (li *Listener) Start(
+	ctx context.Context,
+	eg *errgroup.Group,
+	basicChannelStartBlock uint32,
+	incentivizedChannelStartBlock uint32,
+) {
+	li.startChannelListener(
+		ctx, eg,
+		substrate.ChannelID{IsBasic: true},
+		basicChannelStartBlock,
+	)
+	li.startChannelListener(
+		ctx, eg,
+		substrate.ChannelID{IsIncentivized: true},
+		incentivizedChannelStartBlock,
+	)
+}
 
-	blockNumber, err := li.fetchStartBlock()
-	if err != nil {
-		return nil
-	}
-
+func (li *Listener) startChannelListener(ctx context.Context, eg *errgroup.Group, channelID substrate.ChannelID, startBlock uint32) {
 	headers := make(chan types.Header)
 
 	eg.Go(func() error {
-		err = li.produceFinalizedHeaders(ctx, blockNumber, headers)
+		err := li.produceFinalizedHeaders(ctx, startBlock, headers)
 		close(headers)
 		return err
 	})
 
 	eg.Go(func() error {
-		err := li.consumeFinalizedHeaders(ctx, headers)
-		close(li.messages)
+		err := li.consumeFinalizedHeaders(ctx, channelID, headers)
+		// Ensure that channel is closed only once, as we have 2 consumer goroutines
+		li.messagesSync.Do(func() {
+			close(li.messages)
+		})
 		return err
 	})
-
-	return nil
 }
 
 func sleep(ctx context.Context, delay time.Duration) {
@@ -64,27 +80,10 @@ func sleep(ctx context.Context, delay time.Duration) {
 	}
 }
 
-// Fetch the starting block
-func (li *Listener) fetchStartBlock() (uint64, error) {
-	hash, err := li.conn.api.RPC.Chain.GetFinalizedHead()
-	if err != nil {
-		li.log.WithError(err).Error("Failed to fetch hash for starting block")
-		return 0, err
-	}
-
-	header, err := li.conn.api.RPC.Chain.GetHeader(hash)
-	if err != nil {
-		li.log.WithError(err).Error("Failed to fetch header for starting block")
-		return 0, err
-	}
-
-	return uint64(header.Number), nil
-}
-
 var ErrBlockNotReady = errors.New("required result to be 32 bytes, but got 0")
 
-func (li *Listener) produceFinalizedHeaders(ctx context.Context, startBlock uint64, headers chan<- types.Header) error {
-	current := startBlock
+func (li *Listener) produceFinalizedHeaders(ctx context.Context, startBlock uint32, headers chan<- types.Header) error {
+	current := uint64(startBlock)
 	retryInterval := time.Duration(6) * time.Second
 	for {
 		select {
@@ -136,7 +135,7 @@ func (li *Listener) produceFinalizedHeaders(ctx context.Context, startBlock uint
 	}
 }
 
-func (li *Listener) consumeFinalizedHeaders(ctx context.Context, headers <-chan types.Header) error {
+func (li *Listener) consumeFinalizedHeaders(ctx context.Context, channelID substrate.ChannelID, headers <-chan types.Header) error {
 	if li.messages == nil {
 		li.log.Info("Not polling events since channel is nil")
 		return nil
@@ -152,7 +151,7 @@ func (li *Listener) consumeFinalizedHeaders(ctx context.Context, headers <-chan 
 			if !ok {
 				return nil
 			}
-			err := li.processHeader(ctx, header)
+			err := li.processHeader(channelID, header)
 			if err != nil {
 				return err
 			}
@@ -160,10 +159,11 @@ func (li *Listener) consumeFinalizedHeaders(ctx context.Context, headers <-chan 
 	}
 }
 
-func (li *Listener) processHeader(ctx context.Context, header types.Header) error {
+func (li *Listener) processHeader(channelID substrate.ChannelID, header types.Header) error {
 
 	li.log.WithFields(logrus.Fields{
 		"blockNumber": header.Number,
+		"channel":     channelID,
 	}).Debug("Processing block")
 
 	digestItem, err := getAuxiliaryDigestItem(header.Digest)
@@ -175,11 +175,15 @@ func (li *Listener) processHeader(ctx context.Context, header types.Header) erro
 		return nil
 	}
 
+	if digestItem.AsCommitment.ChannelID != channelID {
+		return nil
+	}
+
 	li.log.WithFields(logrus.Fields{
-		"block":          header.Number,
-		"channelID":      digestItem.AsCommitment.ChannelID,
-		"commitmentHash": digestItem.AsCommitment.Hash.Hex(),
-	}).Debug("Found commitment hash in header digest")
+		"block":      header.Number,
+		"channel":    channelID,
+		"commitment": digestItem.AsCommitment.Hash.Hex(),
+	}).Info("Found commitment in header digest")
 
 	storageKey, err := MakeStorageKey(digestItem.AsCommitment.ChannelID, digestItem.AsCommitment.Hash)
 	if err != nil {
@@ -188,13 +192,14 @@ func (li *Listener) processHeader(ctx context.Context, header types.Header) erro
 
 	data, err := li.conn.api.RPC.Offchain.LocalStorageGet(rpcOffchain.Persistent, storageKey)
 	if err != nil {
-		li.log.WithError(err).Error("Failed to read commitment from offchain storage")
+		li.log.WithError(err).WithField("channel", channelID).Error("Failed to read commitment from offchain storage")
 		return err
 	}
 
 	if data != nil {
 		li.log.WithFields(logrus.Fields{
 			"block":               header.Number,
+			"channel":             channelID,
 			"commitmentSizeBytes": len(*data),
 		}).Debug("Retrieved commitment from offchain storage")
 	} else {
@@ -206,7 +211,7 @@ func (li *Listener) processHeader(ctx context.Context, header types.Header) erro
 
 	err = types.DecodeFromBytes(*data, &messages)
 	if err != nil {
-		li.log.WithError(err).Error("Failed to decode commitment messages")
+		li.log.WithError(err).WithField("channel", channelID).Error("Failed to decode commitment messages")
 		return err
 	}
 

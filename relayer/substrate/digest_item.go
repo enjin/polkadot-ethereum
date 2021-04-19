@@ -78,3 +78,14 @@ func (c ChannelID) Encode(encoder scale.Encoder) error {
 
 	return nil
 }
+
+func (c ChannelID) String() string {
+	switch {
+	case c.IsBasic:
+		return fmt.Sprintf("channel-0")
+	case c.IsIncentivized:
+		return fmt.Sprintf("channel-1")
+	default:
+		return fmt.Sprintf("channel-*")
+	}
+}

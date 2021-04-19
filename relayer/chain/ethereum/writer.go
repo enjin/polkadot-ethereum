@@ -33,10 +33,16 @@ type Writer struct {
 	log               *logrus.Entry
 }
 
-func NewWriter(config *Config, conn *Connection, db *store.Database, messages <-chan []chain.Message,
-	databaseMessages chan<- store.DatabaseCmd, beefyMessages <-chan store.BeefyRelayInfo,
+func NewWriter(
+	config *Config,
+	conn *Connection,
+	db *store.Database,
+	messages <-chan []chain.Message,
+	databaseMessages chan<- store.DatabaseCmd,
+	beefyMessages <-chan store.BeefyRelayInfo,
 	contracts map[substrate.ChannelID]*inbound.Contract,
-	log *logrus.Entry) (*Writer, error) {
+	log *logrus.Entry,
+) (*Writer, error) {
 	return &Writer{
 		config:           config,
 		conn:             conn,

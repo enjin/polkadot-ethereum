@@ -65,7 +65,7 @@ func (ch *Chain) SetSender(subMessages chan<- []chain.Message, _ chan<- chain.He
 	return nil
 }
 
-func (ch *Chain) Start(ctx context.Context, eg *errgroup.Group, ethInit chan<- chain.Init, _ <-chan chain.Init) error {
+func (ch *Chain) Start(ctx context.Context, eg *errgroup.Group, ethInit chan<- chain.Init, subInit <-chan chain.Init) error {
 	if ch.listener == nil && ch.writer == nil {
 		return fmt.Errorf("Sender and/or receiver need to be set before starting chain")
 	}
@@ -75,24 +75,16 @@ func (ch *Chain) Start(ctx context.Context, eg *errgroup.Group, ethInit chan<- c
 		return err
 	}
 
-	// The Ethereum chain needs init params from Substrate
-	// to complete startup.
-	ethInitHeaderID, err := ch.queryEthereumInitParams()
+	// Send init params to Ethereum chain
+	err = ch.sendInitParams(ethInit)
 	if err != nil {
 		return err
 	}
-	ch.log.WithFields(logrus.Fields{
-		"blockNumber": ethInitHeaderID.Number,
-		"blockHash":   ethInitHeaderID.Hash.Hex(),
-	}).Info("Retrieved init params for Ethereum from Substrate")
-	ethInit <- ethInitHeaderID
-	close(ethInit)
+
+	startingBlocks, err := ch.receiveInitParams(subInit)
 
 	if ch.listener != nil {
-		err = ch.listener.Start(ctx, eg)
-		if err != nil {
-			return err
-		}
+		ch.listener.Start(ctx, eg, startingBlocks[0], startingBlocks[1])
 	}
 
 	if ch.writer != nil {
@@ -105,6 +97,37 @@ func (ch *Chain) Start(ctx context.Context, eg *errgroup.Group, ethInit chan<- c
 	return nil
 }
 
+// Send init params to Substrate chain
+func (ch *Chain) sendInitParams(ethInit chan<- chain.Init) error {
+	headerID, err := ch.queryVerifierFinalizedBlock()
+	if err != nil {
+		return err
+	}
+	ch.log.WithFields(logrus.Fields{
+		"blockNumber": headerID.Number,
+		"blockHash":   headerID.Hash.Hex(),
+	}).Info("Retrieved init params for Ethereum from Substrate")
+
+	ethInit <- headerID
+	close(ethInit)
+
+	return nil
+}
+
+// Receive init params from Ethereum chain
+func (ch *Chain) receiveInitParams(subInit <-chan chain.Init) (*[2]uint32, error) {
+	holder, ok := <-subInit
+	if !ok {
+		return nil, fmt.Errorf("Channel is closed")
+	}
+	startingBlocks, ok := holder.([2]uint32)
+	if !ok {
+		return nil, fmt.Errorf("invalid starting params")
+	}
+
+	return &startingBlocks, nil
+}
+
 func (ch *Chain) Stop() {
 	if ch.conn != nil {
 		ch.conn.Close()
@@ -115,7 +138,7 @@ func (ch *Chain) Name() string {
 	return Name
 }
 
-func (ch *Chain) queryEthereumInitParams() (*ethereum.HeaderID, error) {
+func (ch *Chain) queryVerifierFinalizedBlock() (*ethereum.HeaderID, error) {
 	storageKey, err := types.CreateStorageKey(&ch.conn.metadata, "VerifierLightclient", "FinalizedBlock", nil, nil)
 	if err != nil {
 		return nil, err
