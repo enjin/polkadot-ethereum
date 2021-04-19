@@ -147,7 +147,7 @@ func (wr *Writer) WriteChannel(ctx context.Context, msg *chain.SubstrateOutbound
 	}
 
 	var messages []inbound.InboundChannelMessage
-	for _, m := range msg.Commitment {
+	for _, m := range msg.Messages {
 		messages = append(messages,
 			inbound.InboundChannelMessage{
 				Target:  m.Target,
@@ -157,7 +157,7 @@ func (wr *Writer) WriteChannel(ctx context.Context, msg *chain.SubstrateOutbound
 		)
 	}
 
-	tx, err := contract.Submit(&options, messages, msg.CommitmentHash)
+	tx, err := contract.Submit(&options, msg.BlockNumber, messages, msg.Commitment)
 	if err != nil {
 		wr.log.WithError(err).Error("Failed to submit transaction")
 		return err

@@ -211,9 +211,10 @@ func (li *Listener) processHeader(ctx context.Context, header types.Header) erro
 	}
 
 	message := chain.SubstrateOutboundMessage{
-		ChannelID:      digestItem.AsCommitment.ChannelID,
-		CommitmentHash: digestItem.AsCommitment.Hash,
-		Commitment:     messages,
+		ChannelID:   digestItem.AsCommitment.ChannelID,
+		BlockNumber: header.Number,
+		Messages:    messages,
+		Commitment:  digestItem.AsCommitment.Hash,
 	}
 
 	li.messages <- []chain.Message{message}

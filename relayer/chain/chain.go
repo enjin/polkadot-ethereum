@@ -16,9 +16,10 @@ type Message interface{}
 
 // Message from Substrate
 type SubstrateOutboundMessage struct {
-	ChannelID      substrate.ChannelID
-	CommitmentHash types.H256
-	Commitment     []substrate.CommitmentMessage
+	ChannelID   substrate.ChannelID
+	BlockNumber types.BlockNumber
+	Messages    []substrate.CommitmentMessage
+	Commitment  types.H256
 }
 
 // Message from ethereum

@@ -6,14 +6,15 @@ use frame_support::{
 	dispatch::DispatchResult,
 	traits::Get,
 	ensure,
+	log,
 };
 use frame_system::{self as system};
 use sp_core::{H160, H256, RuntimeDebug};
 use sp_io::offchain_index;
-use sp_runtime::{
-	traits::{Hash, Zero},
+use sp_runtime::{traits::{Hash, Zero, CheckedConversion}};
+use sp_std::{
+	prelude::*
 };
-use sp_std::prelude::*;
 
 use artemis_core::{ChannelId, MessageNonce, types::AuxiliaryDigestItem};
 
@@ -91,6 +92,14 @@ decl_module! {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 
+		// Ensure we can convert block number to u64;
+		fn integrity_test() {
+			sp_io::TestExternalities::new_empty().execute_with(|| {
+				let o: Option<u64> = <frame_system::Pallet<T>>::block_number().checked_into();
+				assert_eq!(o, Some(0));
+			});
+		}
+
 		// Generate a message commitment every [`Interval`] blocks.
 		//
 		// The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
@@ -141,7 +150,15 @@ impl<T: Config> Module<T> {
 			return T::WeightInfo::on_initialize_no_messages();
 		}
 
-		let (commitment, payload_byte_count) = Self::encode_commitment(&messages);
+		let block_number: u64 = match <frame_system::Pallet<T>>::block_number().checked_into() {
+			Some(v) => v,
+			None => {
+				log::error!("Runtime misconfigured. Unable to convert block number");
+				return T::WeightInfo::on_initialize_no_messages();
+			}
+		};
+
+		let (commitment, payload_byte_count) = Self::encode_commitment(block_number, &messages);
 		let commitment_hash = <T as Config>::Hashing::hash(&commitment);
 
 		let digest_item = AuxiliaryDigestItem::Commitment(ChannelId::Incentivized, commitment_hash.clone()).into();
@@ -158,9 +175,9 @@ impl<T: Config> Module<T> {
 	}
 
 	// ABI-encode the commitment
-	fn encode_commitment(commitment: &[Message]) -> (Vec<u8>, usize) {
+	fn encode_commitment(block_number: u64, messages: &[Message]) -> (Vec<u8>, usize) {
 		let mut payload_byte_count = 0usize;
-		let messages: Vec<Token> = commitment
+		let messages: Vec<Token> = messages
 			.iter()
 			.map(|message| {
 				payload_byte_count += message.payload.len();
@@ -171,6 +188,12 @@ impl<T: Config> Module<T> {
 				])
 			})
 			.collect();
-		(ethabi::encode(&vec![Token::Array(messages)]), payload_byte_count)
+
+		let commitment = ethabi::encode(&vec![
+			Token::Uint(block_number.into()),
+			Token::Array(messages)]
+		);
+
+		(commitment, payload_byte_count)
 	}
 }

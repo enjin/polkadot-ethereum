@@ -14,16 +14,16 @@ contract IncentivizedInboundChannel is InboundChannel {
 
     // TODO: Submit should take in all inputs required for verification,
     // including eg: _parachainBlockNumber, _parachainMerkleProof, parachainHeadsMMRProof
-    function submit(Message[] calldata _messages, bytes32 _commitment)
+    function submit(uint32 _blockNumber, Message[] calldata _messages, bytes32 _commitment)
         public
         override
     {
-        verifyMessages(_messages, _commitment);
-        processMessages(_messages);
+        verifyMessages(_blockNumber, _messages, _commitment);
+        processMessages(_blockNumber, _messages);
     }
 
     //TODO: verifyMessages should accept all needed proofs
-    function verifyMessages(Message[] calldata _messages, bytes32 _commitment)
+    function verifyMessages(uint32 _blockNumber, Message[] calldata _messages, bytes32 _commitment)
         internal
         view
         returns (bool success)
@@ -48,7 +48,7 @@ contract IncentivizedInboundChannel is InboundChannel {
 
         // Validate that the commitment matches the commitment contents
         require(
-            validateMessagesMatchCommitment(_messages, _commitment),
+            validateMessagesMatchCommitment(_blockNumber, _messages, _commitment),
             "invalid commitment"
         );
 
@@ -62,7 +62,8 @@ contract IncentivizedInboundChannel is InboundChannel {
         return true;
     }
 
-    function processMessages(Message[] calldata _messages) internal {
+    function processMessages(uint32 _blockNumber, Message[] calldata _messages) internal {
+        blockNumber = _blockNumber;
         for (uint256 i = 0; i < _messages.length; i++) {
             // Check message nonce is correct and increment nonce for replay protection
             require(_messages[i].nonce == nonce + 1, "invalid nonce");
@@ -79,9 +80,10 @@ contract IncentivizedInboundChannel is InboundChannel {
     }
 
     function validateMessagesMatchCommitment(
+        uint32 _blockNumber,
         Message[] calldata _messages,
         bytes32 _commitment
     ) internal pure returns (bool) {
-        return keccak256(abi.encode(_messages)) == _commitment;
+        return keccak256(abi.encode(_blockNumber, _messages)) == _commitment;
     }
 }
