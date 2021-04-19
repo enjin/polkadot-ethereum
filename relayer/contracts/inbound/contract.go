@@ -34,7 +34,7 @@ type InboundChannelMessage struct {
 }
 
 // ContractABI is the input ABI used to generate the binding from.
-const ContractABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"result\",\"type\":\"bool\"}],\"name\":\"MessageDispatched\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"nonce\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structInboundChannel.Message[]\",\"name\":\"_messages\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes32\",\"name\":\"_commitment\",\"type\":\"bytes32\"}],\"name\":\"submit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+const ContractABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"result\",\"type\":\"bool\"}],\"name\":\"MessageDispatched\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"blockNumber\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nonce\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"_blockNumber\",\"type\":\"uint32\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structInboundChannel.Message[]\",\"name\":\"_messages\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes32\",\"name\":\"_commitment\",\"type\":\"bytes32\"}],\"name\":\"submit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 
 // Contract is an auto generated Go binding around an Ethereum contract.
 type Contract struct {
@@ -178,6 +178,37 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
+// BlockNumber is a free data retrieval call binding the contract method 0x57e871e7.
+//
+// Solidity: function blockNumber() view returns(uint32)
+func (_Contract *ContractCaller) BlockNumber(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _Contract.contract.Call(opts, &out, "blockNumber")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// BlockNumber is a free data retrieval call binding the contract method 0x57e871e7.
+//
+// Solidity: function blockNumber() view returns(uint32)
+func (_Contract *ContractSession) BlockNumber() (uint32, error) {
+	return _Contract.Contract.BlockNumber(&_Contract.CallOpts)
+}
+
+// BlockNumber is a free data retrieval call binding the contract method 0x57e871e7.
+//
+// Solidity: function blockNumber() view returns(uint32)
+func (_Contract *ContractCallerSession) BlockNumber() (uint32, error) {
+	return _Contract.Contract.BlockNumber(&_Contract.CallOpts)
+}
+
 // Nonce is a free data retrieval call binding the contract method 0xaffed0e0.
 //
 // Solidity: function nonce() view returns(uint64)
@@ -209,25 +240,25 @@ func (_Contract *ContractCallerSession) Nonce() (uint64, error) {
 	return _Contract.Contract.Nonce(&_Contract.CallOpts)
 }
 
-// Submit is a paid mutator transaction binding the contract method 0x6f8bfa34.
+// Submit is a paid mutator transaction binding the contract method 0x41aa4990.
 //
-// Solidity: function submit((address,uint64,bytes)[] _messages, bytes32 _commitment) returns()
-func (_Contract *ContractTransactor) Submit(opts *bind.TransactOpts, _messages []InboundChannelMessage, _commitment [32]byte) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "submit", _messages, _commitment)
+// Solidity: function submit(uint32 _blockNumber, (address,uint64,bytes)[] _messages, bytes32 _commitment) returns()
+func (_Contract *ContractTransactor) Submit(opts *bind.TransactOpts, _blockNumber uint32, _messages []InboundChannelMessage, _commitment [32]byte) (*types.Transaction, error) {
+	return _Contract.contract.Transact(opts, "submit", _blockNumber, _messages, _commitment)
 }
 
-// Submit is a paid mutator transaction binding the contract method 0x6f8bfa34.
+// Submit is a paid mutator transaction binding the contract method 0x41aa4990.
 //
-// Solidity: function submit((address,uint64,bytes)[] _messages, bytes32 _commitment) returns()
-func (_Contract *ContractSession) Submit(_messages []InboundChannelMessage, _commitment [32]byte) (*types.Transaction, error) {
-	return _Contract.Contract.Submit(&_Contract.TransactOpts, _messages, _commitment)
+// Solidity: function submit(uint32 _blockNumber, (address,uint64,bytes)[] _messages, bytes32 _commitment) returns()
+func (_Contract *ContractSession) Submit(_blockNumber uint32, _messages []InboundChannelMessage, _commitment [32]byte) (*types.Transaction, error) {
+	return _Contract.Contract.Submit(&_Contract.TransactOpts, _blockNumber, _messages, _commitment)
 }
 
-// Submit is a paid mutator transaction binding the contract method 0x6f8bfa34.
+// Submit is a paid mutator transaction binding the contract method 0x41aa4990.
 //
-// Solidity: function submit((address,uint64,bytes)[] _messages, bytes32 _commitment) returns()
-func (_Contract *ContractTransactorSession) Submit(_messages []InboundChannelMessage, _commitment [32]byte) (*types.Transaction, error) {
-	return _Contract.Contract.Submit(&_Contract.TransactOpts, _messages, _commitment)
+// Solidity: function submit(uint32 _blockNumber, (address,uint64,bytes)[] _messages, bytes32 _commitment) returns()
+func (_Contract *ContractTransactorSession) Submit(_blockNumber uint32, _messages []InboundChannelMessage, _commitment [32]byte) (*types.Transaction, error) {
+	return _Contract.Contract.Submit(&_Contract.TransactOpts, _blockNumber, _messages, _commitment)
 }
 
 // ContractMessageDispatchedIterator is returned from FilterMessageDispatched and is used to iterate over the raw logs and unpacked data for MessageDispatched events raised by the Contract contract.

@@ -157,7 +157,7 @@ func (wr *Writer) WriteChannel(ctx context.Context, msg *chain.SubstrateOutbound
 		)
 	}
 
-	tx, err := contract.Submit(&options, msg.BlockNumber, messages, msg.Commitment)
+	tx, err := contract.Submit(&options, uint32(msg.BlockNumber), messages, msg.Commitment)
 	if err != nil {
 		wr.log.WithError(err).Error("Failed to submit transaction")
 		return err
