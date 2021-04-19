@@ -84,7 +84,7 @@ func (ch *Chain) Start(ctx context.Context, eg *errgroup.Group, ethInit chan<- c
 	startingBlocks, err := ch.receiveInitParams(subInit)
 
 	if ch.listener != nil {
-		ch.listener.Start(ctx, eg, startingBlocks[0], startingBlocks[1])
+		ch.listener.Start(ctx, eg, startingBlocks[0]+1, startingBlocks[1]+1)
 	}
 
 	if ch.writer != nil {
