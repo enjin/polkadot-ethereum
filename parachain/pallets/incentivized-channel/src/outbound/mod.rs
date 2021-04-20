@@ -1,5 +1,4 @@
-use codec::{Encode, Decode};
-use ethabi::{self, Token};
+use codec::Encode;
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	weights::Weight,
@@ -9,7 +8,7 @@ use frame_support::{
 	log,
 };
 use frame_system::{self as system};
-use sp_core::{H160, H256, RuntimeDebug};
+use sp_core::{H160, H256};
 use sp_io::offchain_index;
 use sp_runtime::{traits::{Hash, Zero, CheckedConversion}};
 use sp_std::{
@@ -17,22 +16,12 @@ use sp_std::{
 };
 
 use artemis_core::{ChannelId, MessageNonce, types::AuxiliaryDigestItem};
+use artemis_commitment::{Message, make_offchain_key, make_commitment};
 
 mod benchmarking;
 
 #[cfg(test)]
 mod test;
-
-/// Wire-format for committed messages
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
-pub struct Message {
-	/// Target application on the Ethereum side.
-	target: H160,
-	/// A nonce for replay protection and ordering.
-	nonce: u64,
-	/// Payload for target application.
-	payload: Vec<u8>,
-}
 
 /// Weight functions needed for this pallet.
 pub trait WeightInfo {
@@ -114,11 +103,6 @@ decl_module! {
 	}
 }
 
-pub fn offchain_key(prefix: &[u8], hash: H256) -> Vec<u8> {
-	(prefix, ChannelId::Incentivized, hash).encode()
-}
-
-
 impl<T: Config> Module<T> {
 	pub fn submit(_: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
 		Nonce::try_mutate(|nonce| -> DispatchResult {
@@ -150,50 +134,28 @@ impl<T: Config> Module<T> {
 			return T::WeightInfo::on_initialize_no_messages();
 		}
 
-		let block_number: u64 = match <frame_system::Pallet<T>>::block_number().checked_into() {
-			Some(v) => v,
+		// Get current block number as u32
+		let block_number: u32 = match <frame_system::Pallet<T>>::block_number().checked_into() {
+			Some(block_number) => block_number,
 			None => {
 				log::error!("Runtime misconfigured. Unable to convert block number");
 				return T::WeightInfo::on_initialize_no_messages();
 			}
 		};
 
-		let (commitment, payload_byte_count) = Self::encode_commitment(block_number, &messages);
-		let commitment_hash = <T as Config>::Hashing::hash(&commitment);
+		let (commitment, payload_size) = make_commitment::<<T as Config>::Hashing>(block_number, &messages);
 
-		let digest_item = AuxiliaryDigestItem::Commitment(ChannelId::Incentivized, commitment_hash.clone()).into();
-		<frame_system::Pallet<T>>::deposit_log(digest_item);
+		let item = AuxiliaryDigestItem::Commitment(ChannelId::Incentivized, commitment.clone()).into();
+		<frame_system::Pallet<T>>::deposit_log(item);
 
-		let key = offchain_key(T::INDEXING_PREFIX, commitment_hash);
+		let key = make_offchain_key(T::INDEXING_PREFIX, ChannelId::Incentivized, commitment);
 		offchain_index::set(&*key, &messages.encode());
 
 		let message_count = messages.len();
 		T::WeightInfo::on_initialize(
 			message_count as u32,
-			(payload_byte_count / message_count).saturating_add(1) as u32,
+			(payload_size / message_count).saturating_add(1) as u32,
 		)
 	}
 
-	// ABI-encode the commitment
-	fn encode_commitment(block_number: u64, messages: &[Message]) -> (Vec<u8>, usize) {
-		let mut payload_byte_count = 0usize;
-		let messages: Vec<Token> = messages
-			.iter()
-			.map(|message| {
-				payload_byte_count += message.payload.len();
-				Token::Tuple(vec![
-					Token::Address(message.target),
-					Token::Uint(message.nonce.into()),
-					Token::Bytes(message.payload.clone())
-				])
-			})
-			.collect();
-
-		let commitment = ethabi::encode(&vec![
-			Token::Uint(block_number.into()),
-			Token::Array(messages)]
-		);
-
-		(commitment, payload_byte_count)
-	}
 }

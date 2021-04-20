@@ -41,11 +41,6 @@ pub trait OutboundRouter<AccountId> {
 	fn submit(channel_id: ChannelId, who: &AccountId, target: H160, payload: &[u8]) -> DispatchResult;
 }
 
-/// Add a message to a commitment
-pub trait MessageCommitment {
-	fn add(channel_id: ChannelId, target: H160, nonce: u64, payload: &[u8]) -> DispatchResult;
-}
-
 /// Dispatch a message
 pub trait MessageDispatch<T: Config, MessageId> {
 	fn dispatch(source: H160, id: MessageId, payload: &[u8]);

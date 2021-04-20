@@ -1,5 +1,5 @@
 [package]
-name = "artemis-core"
+name = "artemis-commitment"
 version = "0.1.1"
 authors = ["Snowfork <contact@snowfork.com>"]
 edition = "2018"
@@ -14,8 +14,10 @@ frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "rococo-v1", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "rococo-v1", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "rococo-v1", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "rococo-v1", default-features = false }
 
-artemis-ethereum = { path = "../ethereum", default-features = false }
+artemis-core = { path = "../core", default-features = false }
+ethabi = { git = "https://github.com/snowfork/ethabi-decode.git", branch = "master", package = "ethabi-decode", default-features = false }
 
 [dev-dependencies]
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
@@ -29,6 +31,9 @@ std = [
     "sp-std/std",
     "sp-core/std",
     "sp-runtime/std",
-    "artemis-ethereum/std"
+    "sp-io/std",
+    "artemis-core/std",
+    "ethabi/std",
+
 ]
 runtime-benchmarks = []

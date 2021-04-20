@@ -237,6 +237,7 @@ dependencies = [
 name = "artemis-basic-channel"
 version = "0.1.1"
 dependencies = [
+ "artemis-commitment",
  "artemis-core",
  "artemis-ethereum",
  "ethabi-decode",
@@ -250,6 +251,24 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "artemis-commitment"
+version = "0.1.1"
+dependencies = [
+ "artemis-core",
+ "enum-iterator",
+ "ethabi-decode",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "rustc-hex",
+ "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -409,6 +428,7 @@ dependencies = [
 name = "artemis-incentivized-channel"
 version = "0.1.1"
 dependencies = [
+ "artemis-commitment",
  "artemis-core",
  "artemis-ethereum",
  "ethabi-decode",

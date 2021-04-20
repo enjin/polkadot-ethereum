@@ -96,6 +96,7 @@ panic = "unwind"
 members = [
     "primitives/core",
     "primitives/ethereum",
+    "primitives/commitment",
     "primitives/testutils",
     "primitives/xcm-support",
     "pallets/basic-channel",

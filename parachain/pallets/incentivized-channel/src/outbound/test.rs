@@ -6,7 +6,8 @@ use frame_support::{
 	parameter_types,
 };
 use sp_runtime::{
-	traits::{BlakeTwo256, Keccak256, IdentityLookup, IdentifyAccount, Verify}, testing::Header, MultiSignature
+	traits::{BlakeTwo256, Keccak256, IdentityLookup, IdentifyAccount, Verify},
+	testing::Header, MultiSignature
 };
 use sp_keyring::AccountKeyring as Keyring;
 use sp_std::convert::From;
@@ -61,7 +62,6 @@ impl system::Config for Test {
 }
 
 parameter_types! {
-	pub const CommitInterval: u64 = 5;
 	pub const MaxMessagesPerCommit: usize = 5;
 }
 
