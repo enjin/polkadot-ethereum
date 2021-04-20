@@ -2,6 +2,7 @@
 
 use sp_core::{H160, H256, RuntimeDebug};
 use sp_runtime::traits::Hash;
+use sp_std::prelude::*;
 use ethabi::{self, Token};
 
 use artemis_core::ChannelId;

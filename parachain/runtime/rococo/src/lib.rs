@@ -394,6 +394,10 @@ use incentivized_channel::inbound as incentivized_channel_inbound;
 use basic_channel::outbound as basic_channel_outbound;
 use incentivized_channel::outbound as incentivized_channel_outbound;
 
+parameter_types! {
+	pub const MaxMessagesPerCommit: usize = 5;
+}
+
 impl basic_channel_inbound::Config for Runtime {
 	type Event = Event;
 	type Verifier = verifier_lightclient::Module<Runtime>;
@@ -402,14 +406,16 @@ impl basic_channel_inbound::Config for Runtime {
 }
 
 impl basic_channel_outbound::Config for Runtime {
+	const INDEXING_PREFIX: &'static [u8] = b"commitment";
 	type Event = Event;
-	type MessageCommitment = commitments::Module<Runtime>;
+	type Hashing = Keccak256;
+	type MaxMessagesPerCommit = MaxMessagesPerCommit;
+	type WeightInfo = ();
 }
 
 parameter_types! {
 	pub SourceAccount: AccountId = DotModuleId::get().into_account();
 	pub TreasuryAccount: AccountId = TreasuryModuleId::get().into_account();
-
 }
 
 pub struct FeeConverter;
@@ -476,18 +482,6 @@ impl verifier_lightclient::Config for Runtime {
 	type WeightInfo = weights::verifier_lightclient_weights::WeightInfo<Runtime>;
 }
 
-parameter_types! {
-	pub const CommitInterval: BlockNumber = 5;
-	pub const MaxMessagesPerCommit: usize = 20;
-}
-
-impl commitments::Config for Runtime {
-	const INDEXING_PREFIX: &'static [u8] = b"commitment";
-	type Event = Event;
-	type Hashing = Keccak256;
-	type MaxMessagesPerCommit = MaxMessagesPerCommit;
-}
-
 impl assets::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::assets_weights::WeightInfo<Runtime>;
@@ -543,17 +537,16 @@ construct_runtime!(
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event} = 6,
 
 		BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Config, Storage, Event} = 7,
-		BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event} = 8,
+		BasicOutboundChannel: basic_channel_outbound::{Pallet, Config<T>, Storage, Event} = 8,
 		IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event} = 9,
 		IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event} = 10,
 		Dispatch: dispatch::{Pallet, Call, Storage, Event<T>, Origin} = 11,
-		Commitments: commitments::{Pallet, Call, Config<T>, Storage, Event} = 12,
-		VerifierLightclient: verifier_lightclient::{Pallet, Call, Storage, Event, Config} = 13,
-		Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>} = 14,
+		VerifierLightclient: verifier_lightclient::{Pallet, Call, Storage, Event, Config} = 12,
+		Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>} = 13,
 
-		LocalXcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 15,
-		Transfer: artemis_transfer::{Pallet, Call, Event<T>} = 16,
-		Utility: pallet_utility::{Pallet, Call, Event, Storage} = 17,
+		LocalXcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin} = 14,
+		Transfer: artemis_transfer::{Pallet, Call, Event<T>} = 15,
+		Utility: pallet_utility::{Pallet, Call, Event, Storage} = 16,
 
 		DOT: dot_app::{Pallet, Call, Config, Storage, Event<T>} = 64,
 		ETH: eth_app::{Pallet, Call, Config, Storage, Event<T>} = 65,
