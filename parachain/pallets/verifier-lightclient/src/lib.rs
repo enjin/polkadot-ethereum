@@ -437,7 +437,7 @@ impl<T: Config> Module<T> {
 	// Verifies that the receipt encoded in proof.data is included
 	// in the block given by proof.block_hash. Inclusion is only
 	// recognized if the block has been finalized.
-	fn verify_receipt_inclusion(proof: &Proof) -> Result<Receipt, DispatchError> {
+	fn verify_receipt_inclusion(proof: &Proof) -> Result<(EthereumHeader, Receipt), DispatchError> {
 		let stored_header = Headers::<T>::get(proof.block_hash)
 			.ok_or(Error::<T>::MissingHeader)?;
 
@@ -446,7 +446,7 @@ impl<T: Config> Module<T> {
 		let receipt = stored_header.header.check_receipt_proof(&proof.data.1)
 			.ok_or(Error::<T>::InvalidProof)?;
 
-		Ok(receipt)
+		Ok((stored_header.header, receipt))
 	}
 }
 
@@ -462,8 +462,8 @@ fn ancestry<T: Config>(mut hash: H256) -> impl Iterator<Item = (H256, EthereumHe
 
 impl<T: Config> Verifier for Module<T> {
 
-	fn verify(message: &Message) -> Result<Log, DispatchError> {
-		let receipt = Self::verify_receipt_inclusion(&message.proof)?;
+	fn verify(message: &Message) -> Result<(Log, u64), DispatchError> {
+		let (header, receipt) = Self::verify_receipt_inclusion(&message.proof)?;
 
 		let log: Log = rlp::decode(&message.data)
 			.map_err(|_| Error::<T>::InvalidProof)?;
@@ -472,7 +472,7 @@ impl<T: Config> Verifier for Module<T> {
 			return Err(Error::<T>::InvalidProof.into());
 		}
 
-		Ok(log)
+		Ok((log, header.number))
 	}
 
 	fn initialize_storage(

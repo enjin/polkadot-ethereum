@@ -39,9 +39,6 @@ pub struct Message {
 }
 
 /// Verification input for the message verifier.
-///
-/// This data type allows us to support multiple verification schemes. In the near future,
-/// A light-client scheme will be added too.
 #[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct Proof {
 	// The block hash of the block in which the receipt was included.

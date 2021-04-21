@@ -66,6 +66,7 @@ decl_storage! {
 	trait Store for Module<T: Config> as IncentivizedInboundModule {
 		pub SourceChannel get(fn source_channel) config(): H160;
 		pub Nonce: u64;
+		pub BlockNumber: u64;
 		pub RewardFraction get(fn reward_fraction) config(): Perbill;
 
 	}
@@ -99,7 +100,7 @@ decl_module! {
 		pub fn submit(origin, message: Message) -> DispatchResult {
 			let relayer = ensure_signed(origin)?;
 			// submit message to verifier for verification
-			let log = T::Verifier::verify(&message)?;
+			let (log, block_number) = T::Verifier::verify(&message)?;
 
 			// Decode log into an Envelope
 			let envelope: Envelope<T> = Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
@@ -119,6 +120,8 @@ decl_module! {
 					Ok(())
 				}
 			})?;
+
+			BlockNumber::set(block_number);
 
 			Self::handle_fee(envelope.fee, &relayer);
 
