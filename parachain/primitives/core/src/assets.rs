@@ -15,7 +15,7 @@ pub enum AssetId {
 
 pub trait MultiAsset<AccountId>
 {
-	fn total_issuance(asset_id: AssetId) -> U256;
+	fn supply(asset_id: AssetId) -> U256;
 
 	fn balance(asset_id: AssetId, who: &AccountId) -> U256;
 
