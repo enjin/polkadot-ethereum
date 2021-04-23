@@ -1,136 +1,96 @@
-use crate::mock::{new_tester, AccountId, Assets, Test};
-use frame_support::{assert_ok, assert_noop};
-use sp_keyring::AccountKeyring as Keyring;
-use crate::{Balances, TotalIssuance};
-use artemis_core::{AssetId, MultiAsset};
-
 use super::*;
+use crate::{Error, mock::*};
+use sp_runtime::TokenError;
+use sp_core::U256;
+use frame_support::{assert_ok, assert_noop, traits::Currency};
 
-fn set_balance<T>(asset_id: AssetId, account_id: &AccountId, amount: T)
-	where T : Into<U256> + Copy
-{
-	let value = amount.into();
-	Balances::<Test>::insert(asset_id, &account_id, &value);
-	TotalIssuance::insert(asset_id, value);
+fn last_event() -> mock::Event {
+	frame_system::Pallet::<Test>::events().pop().expect("Event expected").event
 }
 
 #[test]
-fn deposit_should_increase_balance_and_total_issuance() {
-	new_tester().execute_with(|| {
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		assert_ok!(<Assets as MultiAsset<_>>::deposit(asset_id, &alice, 500.into()));
-		assert_eq!(Balances::<Test>::get(&asset_id, &alice), 500.into());
-		assert_eq!(TotalIssuance::get(&asset_id), 500.into());
+fn minting_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::do_create(0));
 
-		assert_ok!(<Assets as MultiAsset<_>>::deposit(asset_id, &alice, 20.into()));
-		assert_eq!(Balances::<Test>::get(&asset_id, &alice), 520.into());
-		assert_eq!(TotalIssuance::get(&asset_id), 520.into());
+		assert_ok!(Assets::do_issue(0, &1, 100.into()));
+		assert_eq!(Assets::balance(0, &1), 100.into());
+
+		assert_ok!(Assets::do_issue(0, &1, 20.into()));
+		assert_eq!(Assets::balance(0, &1), 120.into());
+
+		assert_ok!(Assets::do_issue(0, &2, 100.into()));
+		assert_eq!(Assets::balance(0, &2), 100.into());
+
+		assert_eq!(Assets::supply(0), 220.into());
 	});
 }
 
 #[test]
-fn deposit_should_raise_total_issuance_overflow_error() {
-	new_tester().execute_with(|| {
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		TotalIssuance::insert(&asset_id, U256::MAX);
+fn burning_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::do_create(0));
+		assert_ok!(Assets::do_issue(0, &1, 100.into()));
 
-		assert_noop!(
-			<Assets as MultiAsset<_>>::deposit(asset_id, &alice, U256::one()),
-			Error::<Test>::TotalIssuanceOverflow
-		);
+		assert_ok!(Assets::do_burn(0, &1, 20.into()));
+		assert_eq!(Assets::balance(0, &1), 80.into());
+
+		assert_ok!(Assets::do_burn(0, &1, 20.into()));
+		assert_eq!(Assets::balance(0, &1), 60.into());
+
+		assert_eq!(Assets::supply(0), 60.into());
 	});
 }
 
 #[test]
-fn deposit_should_raise_balance_overflow_error() {
-	new_tester().execute_with(|| {
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		Balances::<Test>::insert(&asset_id, &alice, U256::MAX);
+fn transfers_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::do_create(0));
+		assert_ok!(Assets::do_issue(0, &1, 100.into()));
 
-		assert_noop!(
-			<Assets as MultiAsset<_>>::deposit(asset_id, &alice, U256::one()),
-			Error::<Test>::BalanceOverflow
-		);
+		assert_ok!(Assets::do_transfer(0, &1, &2, 50.into()));
+		assert_eq!(Assets::balance(0, &1), 50.into());
+		assert_eq!(Assets::balance(0, &2), 50.into());
+		assert_eq!(Assets::supply(0), 100.into());
 	});
 }
 
-#[test]
-fn withdrawal_should_decrease_balance_and_total_issuance() {
-	new_tester().execute_with(|| {
-		let alice: AccountId = Keyring::Alice.into();
-		set_balance(AssetId::ETH, &alice, 500);
 
-		assert_ok!(<Assets as MultiAsset<_>>::withdraw(AssetId::ETH, &alice, 20.into()));
-		assert_eq!(Balances::<Test>::get(AssetId::ETH, &alice), 480.into());
-		assert_eq!(TotalIssuance::get(AssetId::ETH), 480.into());
+#[test]
+fn transferring_amount_more_than_available_balance_should_not_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::do_create(0));
+		assert_ok!(Assets::do_issue(0, &1, 100.into()));
+
+		assert_noop!(Assets::do_transfer(0, &1, &2, 1000), Error::<Test>::BalanceLow);
+		assert_noop!(Assets::transfer(Origin::signed(2), 0, 1, 51), Error::<Test>::BalanceLow);
 	});
 }
 
-#[test]
-fn withdrawal_should_raise_total_issuance_underflow_error() {
-	new_tester().execute_with(|| {
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		TotalIssuance::insert(&asset_id, U256::one());
-
-		assert_noop!(
-			<Assets as MultiAsset<_>>::withdraw(asset_id, &alice, 10.into()),
-			Error::<Test>::TotalIssuanceUnderflow
-		);
-
-	});
-}
 
 #[test]
-fn withdrawal_should_raise_balance_underflow_error() {
-	new_tester().execute_with(|| {
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		TotalIssuance::insert(&asset_id, U256::from(500));
+fn account_lifecycle_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::do_create(0));
 
-		assert_noop!(
-			<Assets as MultiAsset<_>>::withdraw(asset_id, &alice, 10.into()),
-			Error::<Test>::InsufficientBalance
-		);
+		assert_ok!(Assets::do_issue(0, &1, 100.into()));
+		assert_ok!(Assets::do_issue(0, &2, 100.into()));
+		assert_ok!(Assets::do_issue(0, &3, 100.into()));
+		assert_eq!(Asset::<Test>::get(0).unwrap().accounts, 3);
+		assert_eq!(Account::<Test>::iter_prefix(0).count(), 3);
 
-	});
-}
+		assert_ok!(Assets::do_transfer(0, &1, &3, 100.into()));
+		assert_ok!(Assets::do_transfer(0, &2, &3, 100.into()));
+		assert_eq!(Asset::<Test>::get(0).unwrap().accounts, 1);
+		assert_eq!(Account::<Test>::iter_prefix(0).count(), 1);
 
-#[test]
-fn transfer_free_balance() {
-	new_tester().execute_with(|| {
+		assert_ok!(Assets::do_transfer(0, &3, &4, 100.into()));
+		assert_eq!(Asset::<Test>::get(0).unwrap().accounts, 2);
+		assert_eq!(Account::<Test>::iter_prefix(0).count(), 2);
 
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		let bob: AccountId = Keyring::Bob.into();
-
-		assert_ok!(<Assets as MultiAsset<_>>::deposit(asset_id, &alice, 500.into()));
-		assert_ok!(<Assets as MultiAsset<_>>::deposit(asset_id, &bob, 500.into()));
-		assert_ok!(<Assets as MultiAsset<_>>::transfer(asset_id, &alice, &bob, 250.into()));
-
-		assert_eq!(Balances::<Test>::get(&asset_id, &alice), 250.into());
-		assert_eq!(Balances::<Test>::get(&asset_id, &bob), 750.into());
-		assert_eq!(TotalIssuance::get(&asset_id), 1000.into());
-	});
-}
-
-#[test]
-fn transfer_should_raise_insufficient_balance() {
-	new_tester().execute_with(|| {
-
-		let asset_id = AssetId::ETH;
-		let alice: AccountId = Keyring::Alice.into();
-		let bob: AccountId = Keyring::Bob.into();
-
-		assert_ok!(<Assets as MultiAsset<_>>::deposit(asset_id, &alice, 500.into()));
-		assert_ok!(<Assets as MultiAsset<_>>::deposit(asset_id, &bob, 500.into()));
-
-		assert_noop!(
-			<Assets as MultiAsset<_>>::transfer(asset_id, &alice, &bob, 1000.into()),
-			Error::<Test>::InsufficientBalance,
-		);
+		assert_ok!(Assets::do_burn(0, &3, 200.into()));
+		assert_ok!(Assets::do_burn(0, &4, 100.into()));
+		assert_eq!(Asset::<Test>::get(0).unwrap().accounts, 0);
+		assert_eq!(Account::<Test>::iter_prefix(0).count(), 0);
 	});
 }

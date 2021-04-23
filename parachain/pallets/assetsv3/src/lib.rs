@@ -7,8 +7,8 @@ pub mod weights;
 #[cfg(test)]
 mod mock;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 use sp_std::prelude::*;
 use codec::HasCompact;
@@ -135,6 +135,34 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+
+		/// Get the asset `id` balance of `who`.
+		pub fn balance(id: T::AssetId, who: &T::AccountId) -> U256 {
+			Account::<T>::get(id, who).balance
+		}
+
+		/// Get the supply of an asset `id`.
+		pub fn supply(id: T::AssetId) -> U256 {
+			Asset::<T>::get(id)
+				.map(|x| x.supply)
+				.unwrap_or_else(U256::zero)
+		}
+
+		pub(super) fn do_create(id: T::AssetId) -> DispatchResult {
+			ensure!(!Asset::<T>::contains_key(id), Error::<T>::InUse);
+
+			Asset::<T>::insert(
+				id,
+				AssetDetails {
+					supply: U256::zero(),
+					accounts: 0,
+				}
+			);
+
+			Pallet::<T>::deposit_event(Event::Created(id));
+
+			Ok(())
+		}
 
 		pub(super) fn new_account(
 			who: &T::AccountId,
@@ -290,6 +318,9 @@ pub mod pallet {
 				if source == dest {
 					return Ok(())
 				}
+
+				Self::can_decrease(id, source, amount)?;
+				Self::can_increase(id, dest, amount)?;
 
 				source_account.balance = source_account.balance.saturating_sub(amount);
 

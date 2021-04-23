@@ -25,7 +25,6 @@ frame_support::construct_runtime!(
 );
 
 pub type Signature = MultiSignature;
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -41,7 +40,7 @@ impl frame_system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
+	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -58,7 +57,6 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const BlockHashCount: u64 = 250;
 	pub const StringLimit: u32 = 32;
 }
 
@@ -72,7 +70,7 @@ impl assets::Config for Test {
 	type WeightInfo = ();
 }
 
-pub fn new_tester() -> sp_io::TestExternalities {
+pub fn new_test_ext() -> sp_io::TestExternalities {
 	let storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut ext: sp_io::TestExternalities = storage.into();
