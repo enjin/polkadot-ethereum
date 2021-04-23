@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(unused_variables, dead_code)]
 
 mod benchmarking;
 pub mod weights;
@@ -6,15 +7,12 @@ pub mod weights;
 #[cfg(test)]
 mod mock;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 use sp_std::prelude::*;
-use frame_support::{
-	traits::tokens::{WithdrawConsequence, DepositConsequence},
-};
 use codec::HasCompact;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::{TokenError, traits::StaticLookup};
 use sp_core::U256;
 
 pub use weights::WeightInfo;
@@ -33,6 +31,8 @@ pub mod pallet {
 	pub struct AssetDetails {
 		/// The total supply across all accounts.
 		pub(super) supply: U256,
+		/// number of account references
+		pub(super) accounts: u32,
 	}
 
 	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
@@ -60,6 +60,9 @@ pub mod pallet {
 
 		type AssetId: Member + Parameter + Default + Copy + HasCompact;
 
+		/// The maximum length of a name or symbol stored on-chain.
+		type StringLimit: Get<u32>;
+
 		type WeightInfo: WeightInfo;
 	}
 
@@ -76,12 +79,14 @@ pub mod pallet {
 		Issued(T::AssetId, T::AccountId, U256),
 		Burned(T::AssetId, T::AccountId, U256),
 		Transferred(T::AssetId, T::AccountId, T::AccountId, U256),
+		MetadataSet(T::AssetId, Vec<u8>, Vec<u8>, u8),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		InUse,
-		Unknown,
+		Overflow,
+		BadMetadata,
 	}
 
 	#[pallet::storage]
@@ -124,89 +129,213 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
+			Self::do_transfer(id, &who, &dest, amount)?;
 			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
 
-		pub(super) fn can_increase(id: T::AssetId, who: &T::AccountId, amount: U256) -> DepositConsequence {
+		pub(super) fn new_account(
+			who: &T::AccountId,
+			details: &mut AssetDetails,
+		) -> Result<(), DispatchError> {
+			details.accounts = details.accounts.checked_add(1).ok_or(Error::<T>::Overflow)?;
+			frame_system::Pallet::<T>::inc_sufficients(who);
+			Ok(())
+		}
+
+		pub(super) fn dead_account(
+			who: &T::AccountId,
+			details: &mut AssetDetails,
+		) -> Result<(), DispatchError> {
+			details.accounts = details.accounts.saturating_sub(1);
+			frame_system::Pallet::<T>::dec_sufficients(who);
+			Ok(())
+		}
+
+		pub(super) fn can_increase(id: T::AssetId, who: &T::AccountId, amount: U256) -> Result<(), TokenError> {
 			let details = match Asset::<T>::get(id) {
 				Some(details) => details,
-				None => return DepositConsequence::UnknownAsset,
+				None => return Err(TokenError::UnknownAsset)
 			};
-
 			if details.supply.checked_add(amount).is_none() {
-				return DepositConsequence::Overflow
+				return Err(TokenError::Overflow)
 			}
 
 			let account = Account::<T>::get(id, who);
-			if account.balance.checked_add(amount).is_none() {
-				return DepositConsequence::Overflow
+			if account.balance.is_zero() {
+				if details.accounts.checked_add(1).is_none() {
+					return Err(TokenError::Overflow)
+				}
 			}
-
-			DepositConsequence::Success
+			if account.balance.checked_add(amount).is_none() {
+				return Err(TokenError::Overflow)
+			}
+			Ok(())
 		}
 
 		pub(super) fn can_decrease(
 			id: T::AssetId,
 			who: &T::AccountId,
 			amount: U256,
-		) -> WithdrawConsequence<u128> {
+		) -> Result<(), TokenError> {
 			let details = match Asset::<T>::get(id) {
 				Some(details) => details,
-				None => return WithdrawConsequence::UnknownAsset,
+				None => return Err(TokenError::UnknownAsset),
 			};
 
 			if details.supply.checked_sub(amount).is_none() {
-				return WithdrawConsequence::Underflow
+				return Err(TokenError::Underflow)
 			}
 
 			let account = Account::<T>::get(id, who);
 
 			if let Some(rest) = account.balance.checked_sub(amount) {
-				WithdrawConsequence::Success
+				Ok(())
 			} else {
-				WithdrawConsequence::NoFunds
+				Err(TokenError::NoFunds)
 			}
 		}
 
-		pub(super) fn do_deposit(id: T::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult  {
-			if amount.is_zero() {
-				return Ok(())
-			}
-			Self::can_increase(id, who, amount).into_result()?;
-			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
-				let details = maybe_details.as_mut().ok_or(Error::<T>::Unknown)?;
-
-				Account::<T>::try_mutate(id, who, |account| -> Result<(), DispatchError> {
-					let new_balance = account.balance.saturating_add(amount);
-					account.balance = new_balance;
-					details.supply = details.supply.saturating_add(amount);
-					Ok(())
-				})
+		pub(super) fn do_issue(id: T::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult  {
+			Self::increase_balance(id, who, amount, |details| -> DispatchResult {
+				details.supply = details.supply.saturating_add(amount);
+				Ok(())
 			})?;
 			Self::deposit_event(Event::Issued(id, who.clone(), amount));
 			Ok(())
 		}
 
-		pub(super) fn do_withdraw(id: T::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult  {
+		pub(super) fn increase_balance(
+			id: T::AssetId,
+			who: &T::AccountId,
+			amount: U256,
+			check: impl FnOnce(&mut AssetDetails) -> DispatchResult,
+		) -> DispatchResult {
 			if amount.is_zero() {
 				return Ok(())
 			}
-			Self::can_decrease(id, who, amount).into_result()?;
+			Self::can_increase(id, who, amount)?;
 			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
-				let details = maybe_details.as_mut().ok_or(Error::<T>::Unknown)?;
+				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
+
+				check(details)?;
 
 				Account::<T>::try_mutate(id, who, |account| -> Result<(), DispatchError> {
-					let new_balance = account.balance.saturating_sub(amount);
-					account.balance = new_balance;
-					details.supply = details.supply.saturating_sub(amount);
+					if account.balance.is_zero() {
+						Self::new_account(who, details)?;
+					}
+					account.balance = account.balance.saturating_add(amount);
 					Ok(())
 				})
+			})
+		}
+
+		pub(super) fn do_burn(id: T::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult {
+			Self::decrease_balance(id, who, amount, |details| -> DispatchResult {
+				details.supply = details.supply.saturating_sub(amount);
+				Ok(())
 			})?;
 			Self::deposit_event(Event::Burned(id, who.clone(), amount));
 			Ok(())
+		}
+
+		pub(super) fn decrease_balance(
+			id: T::AssetId,
+			who: &T::AccountId,
+			amount: U256,
+			check: impl FnOnce(&mut AssetDetails) -> DispatchResult,
+		) -> DispatchResult {
+			if amount.is_zero() {
+				return Ok(())
+			}
+			Self::can_decrease(id, who, amount)?;
+			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
+				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
+
+				check(details)?;
+
+				Account::<T>::try_mutate_exists(id, who, |maybe_account| -> Result<(), DispatchError> {
+					let mut account = maybe_account.take().unwrap_or_default();
+
+					account.balance = account.balance.saturating_sub(amount);
+					*maybe_account = if account.balance.is_zero() {
+						Self::dead_account(who, details)?;
+						None
+					} else {
+						Some(account)
+					};
+					Ok(())
+				})
+			})
+		}
+
+		pub(super) fn do_transfer(id: T::AssetId, source: &T::AccountId, dest: &T::AccountId, amount: U256) -> DispatchResult {
+			if !Asset::<T>::contains_key(id) {
+				return Err(TokenError::UnknownAsset.into());
+			}
+
+			if amount.is_zero() {
+				Self::deposit_event(Event::Transferred(id, source.clone(), dest.clone(), amount));
+				return Ok(())
+			}
+
+			let mut source_account = Account::<T>::get(id, &source);
+
+			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
+				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
+
+				// Skip if source == dest
+				if source == dest {
+					return Ok(())
+				}
+
+				source_account.balance = source_account.balance.saturating_sub(amount);
+
+				Account::<T>::try_mutate(id, dest, |account| -> Result<(), DispatchError> {
+					if account.balance.is_zero() {
+						Self::new_account(dest, details)?;
+					}
+					account.balance = account.balance.saturating_add(amount);
+					Ok(())
+				})?;
+
+				if source_account.balance.is_zero() {
+					Self::dead_account(source, details)?;
+					Account::<T>::remove(id, source);
+				} else {
+					Account::<T>::insert(id, source, source_account);
+				}
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::Transferred(id, source.clone(), dest.clone(), amount));
+			Ok(())
+		}
+
+		fn set_metadata(
+			id: T::AssetId,
+			name: Vec<u8>,
+			symbol: Vec<u8>,
+			decimals: u8,
+		) -> DispatchResult {
+			ensure!(name.len() <= T::StringLimit::get() as usize, Error::<T>::BadMetadata);
+			ensure!(symbol.len() <= T::StringLimit::get() as usize, Error::<T>::BadMetadata);
+
+			let details = Asset::<T>::get(id).ok_or(TokenError::UnknownAsset)?;
+
+			Metadata::<T>::try_mutate_exists(id, |metadata| {
+				*metadata = Some(AssetMetadata {
+					name: name.clone(),
+					symbol: symbol.clone(),
+					decimals
+				});
+
+				Self::deposit_event(Event::MetadataSet(id, name, symbol, decimals));
+
+				Ok(())
+			})
 		}
 	}
 
@@ -266,8 +395,6 @@ pub mod pallet {
 // 	fn balance(id: T::AssetId, who: &T::AccountId) -> U256 {
 // 		<Account<T>>::get(id, who)
 // 	}
-
-
 
 // 	fn withdraw(asset_id: T::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult  {
 // 		if amount.is_zero() {

@@ -23,7 +23,7 @@ pub use types::{
 	MessageNonce,
 };
 
-pub use assets::{AssetId, MultiAsset, SingleAsset};
+pub use assets::AssetId;
 /// A trait for verifying messages.
 ///
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.

@@ -20,7 +20,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Event<T>},
-		Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Assets: assets::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -31,7 +31,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = ();
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -57,13 +57,23 @@ impl system::Config for Test {
 	type OnSetCode = ();
 }
 
+parameter_types! {
+	pub const BlockHashCount: u64 = 250;
+	pub const StringLimit: u32 = 32;
+}
+
 impl assets::Config for Test {
 	type Event = Event;
+
+	type AssetId = u32;
+
+	type StringLimit = StringLimit;
+
 	type WeightInfo = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-	let storage = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut ext: sp_io::TestExternalities = storage.into();
 	ext.execute_with(|| System::set_block_number(1));
