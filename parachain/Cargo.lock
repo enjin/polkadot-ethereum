@@ -238,6 +238,7 @@ name = "artemis-assetsv3"
 version = "0.1.1"
 dependencies = [
  "artemis-core",
+ "artemis-tokens",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -516,6 +517,20 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "artemis-tokens"
+version = "0.1.1"
+dependencies = [
+ "enum-iterator",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

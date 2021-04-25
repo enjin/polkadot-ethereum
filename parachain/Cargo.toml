@@ -95,6 +95,7 @@ panic = "unwind"
 [workspace]
 members = [
     "primitives/core",
+    "primitives/tokens",
     "primitives/ethereum",
     "primitives/testutils",
     "primitives/xcm-support",

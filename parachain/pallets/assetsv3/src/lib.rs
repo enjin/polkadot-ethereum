@@ -11,11 +11,12 @@ mod mock;
 mod tests;
 
 use sp_std::prelude::*;
-use codec::HasCompact;
 use sp_runtime::{TokenError, traits::StaticLookup};
 use sp_core::U256;
 
 pub use weights::WeightInfo;
+pub use artemis_tokens::{self as tokens, WithdrawConsequence, DepositConsequence};
+
 
 pub use pallet::*;
 
@@ -58,7 +59,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type AssetId: Member + Parameter + Default + Copy + HasCompact;
+		type AssetId: Member + Parameter + Default + Copy + MaybeSerializeDeserialize;
 
 		/// The maximum length of a name or symbol stored on-chain.
 		type StringLimit: Get<u32>;
@@ -79,7 +80,6 @@ pub mod pallet {
 		Issued(T::AssetId, T::AccountId, U256),
 		Burned(T::AssetId, T::AccountId, U256),
 		Transferred(T::AssetId, T::AccountId, T::AccountId, U256),
-		MetadataSet(T::AssetId, Vec<u8>, Vec<u8>, u8),
 	}
 
 	#[pallet::error]
@@ -117,6 +117,34 @@ pub mod pallet {
 		AssetBalance,
 		ValueQuery,
 	>;
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub assets: Vec<T::AssetId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self {
+				assets: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			for id in self.assets.iter() {
+				Asset::<T>::insert(
+					id,
+					AssetDetails {
+						supply: U256::zero(),
+						accounts: 0,
+					}
+				);
+			}
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -182,47 +210,51 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(super) fn can_increase(id: T::AssetId, who: &T::AccountId, amount: U256) -> Result<(), TokenError> {
+		pub(super) fn can_increase(
+			id: T::AssetId,
+			who: &T::AccountId,
+			amount: U256
+		) -> DepositConsequence {
 			let details = match Asset::<T>::get(id) {
 				Some(details) => details,
-				None => return Err(TokenError::UnknownAsset)
+				None => return DepositConsequence::UnknownAsset,
 			};
 			if details.supply.checked_add(amount).is_none() {
-				return Err(TokenError::Overflow)
+				return DepositConsequence::Overflow;
 			}
 
 			let account = Account::<T>::get(id, who);
 			if account.balance.is_zero() {
 				if details.accounts.checked_add(1).is_none() {
-					return Err(TokenError::Overflow)
+					return DepositConsequence::Overflow;
 				}
 			}
 			if account.balance.checked_add(amount).is_none() {
-				return Err(TokenError::Overflow)
+				return DepositConsequence::Overflow;
 			}
-			Ok(())
+			DepositConsequence::Success
 		}
 
 		pub(super) fn can_decrease(
 			id: T::AssetId,
 			who: &T::AccountId,
 			amount: U256,
-		) -> Result<(), TokenError> {
+		) -> WithdrawConsequence {
 			let details = match Asset::<T>::get(id) {
 				Some(details) => details,
-				None => return Err(TokenError::UnknownAsset),
+				None => return WithdrawConsequence::UnknownAsset,
 			};
 
 			if details.supply.checked_sub(amount).is_none() {
-				return Err(TokenError::Underflow)
+				return WithdrawConsequence::Underflow;
 			}
 
 			let account = Account::<T>::get(id, who);
 
-			if let Some(rest) = account.balance.checked_sub(amount) {
-				Ok(())
+			if let None = account.balance.checked_sub(amount) {
+				WithdrawConsequence::NoFunds
 			} else {
-				Err(TokenError::NoFunds)
+				WithdrawConsequence::Success
 			}
 		}
 
@@ -244,7 +276,7 @@ pub mod pallet {
 			if amount.is_zero() {
 				return Ok(())
 			}
-			Self::can_increase(id, who, amount)?;
+			Self::can_increase(id, who, amount).into_result()?;
 			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
 				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
 
@@ -278,7 +310,7 @@ pub mod pallet {
 			if amount.is_zero() {
 				return Ok(())
 			}
-			Self::can_decrease(id, who, amount)?;
+			Self::can_decrease(id, who, amount).into_result()?;
 			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
 				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
 
@@ -319,8 +351,8 @@ pub mod pallet {
 					return Ok(())
 				}
 
-				Self::can_decrease(id, source, amount)?;
-				Self::can_increase(id, dest, amount)?;
+				Self::can_decrease(id, source, amount).into_result()?;
+				Self::can_increase(id, dest, amount).into_result()?;
 
 				source_account.balance = source_account.balance.saturating_sub(amount);
 
@@ -345,7 +377,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn set_metadata(
+		pub(super) fn do_teleport(id: T::AssetId, source: &T::AccountId, dest: &T::AccountId, amount: U256) -> DispatchResult {
+
+
+		pub(super) fn set_metadata(
 			id: T::AssetId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
@@ -362,13 +397,68 @@ pub mod pallet {
 					symbol: symbol.clone(),
 					decimals
 				});
-
-				Self::deposit_event(Event::MetadataSet(id, name, symbol, decimals));
-
 				Ok(())
 			})
 		}
 	}
+
+	impl<T: Config> tokens::Inspect<T::AccountId> for Pallet<T> {
+		type AssetId = T::AssetId;
+
+		fn exists(asset: Self::AssetId) -> bool {
+			match Asset::<T>::get(asset) {
+				Some(_) => true,
+				None => false,
+			}
+		}
+
+		fn balance(asset: Self::AssetId, who: &AccountId) -> U256 {
+			Pallet::<T>::balance(asset, who)
+		}
+
+		fn total_issuance(asset: Self::AssetId) -> U256 {
+			Pallet::<T>::supply(asset)
+		}
+
+		fn can_deposit(asset: Self::AssetId, who: &T::AccountId, amount: U256) -> DepositConsequence {
+			Pallet::<T>::can_increase(asset, who, amount)
+		}
+
+		fn can_withdraw(asset: Self::AssetId, who: &T::AccountId, amount: U256) -> WithdrawConsequence {
+			Pallet::<T>::can_decrease(asset, who, amount)
+		}
+	}
+
+	impl<T: Config> tokens::Mutate<T::AccountId> for Pallet<T> {
+		fn mint(asset: Self::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult {
+			Pallet::<T>::do_issue(asset, who, amount)
+		}
+
+		fn burn(asset: Self::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult {
+			Pallet::<T>::do_burn(asset, who, amount)
+		}
+
+		fn transfer(
+			asset: Self::AssetId,
+			source: &T::AccountId,
+			dest: &T::AccountId,
+			amount: U256
+		) -> DispatchResult {
+			Pallet::<T>::do_transfer(asset, source, dest, amount)
+		}
+
+		fn teleport(
+			asset: Self::AssetId,
+			source: &T::AccountId,
+			dest: &T::AccountId,
+			amount: U256
+		) -> DispatchResult {
+			Pallet::<T>::decrease_balance(asset, source, amount, |_| {})?;
+			Pallet::<T>::increase_balance(asset, dest, amount, |_| {})?;
+		}
+	}
+
+
 
 }
 
