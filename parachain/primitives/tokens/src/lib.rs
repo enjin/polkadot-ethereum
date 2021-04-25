@@ -8,7 +8,7 @@ use frame_support::dispatch::{Parameter, DispatchResult};
 use sp_core::U256;
 use sp_runtime::{TokenError, traits::Member};
 
-pub mod imbalance;
+pub mod token;
 pub mod consequence;
 
 pub use consequence::{DepositConsequence, WithdrawConsequence};
@@ -37,10 +37,6 @@ pub trait Inspect<AccountId> {
 	) -> WithdrawConsequence;
 }
 
-pub trait Create<AccountId>: Inspect<AccountId> {
-	fn create(asset: Self::AssetId) -> DispatchResult;
-}
-
 pub trait Mutate<AccountId>: Inspect<AccountId> {
 	fn mint(asset: Self::AssetId, who: &AccountId, amount: U256) -> DispatchResult;
 
@@ -52,12 +48,4 @@ pub trait Mutate<AccountId>: Inspect<AccountId> {
 		dest: &AccountId,
 		amount: U256
 	) -> DispatchResult;
-
-    fn teleport(
-		asset: Self::AssetId,
-		source: &AccountId,
-		dest: &AccountId,
-		amount: U256
-	) -> DispatchResult;
 }
-

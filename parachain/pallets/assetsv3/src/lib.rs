@@ -41,16 +41,6 @@ pub mod pallet {
 		pub(super) balance: U256
 	}
 
-	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
-	pub struct AssetMetadata {
-		/// The user friendly name of this asset.
-		pub(super) name: Vec<u8>,
-		/// The ticker symbol for this asset.
-		pub(super) symbol: Vec<u8>,
-		/// The number of decimals this asset uses to represent one unit.
-		pub(super) decimals: u8,
-	}
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -76,7 +66,6 @@ pub mod pallet {
 	pub enum Event<T: Config>
 	where
 	{
-		Created(T::AssetId),
 		Issued(T::AssetId, T::AccountId, U256),
 		Burned(T::AssetId, T::AccountId, U256),
 		Transferred(T::AssetId, T::AccountId, T::AccountId, U256),
@@ -84,9 +73,7 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		InUse,
 		Overflow,
-		BadMetadata,
 	}
 
 	#[pallet::storage]
@@ -95,15 +82,6 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AssetId,
 		AssetDetails,
-		OptionQuery,
-	>;
-
-	#[pallet::storage]
-	pub(super) type Metadata<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AssetId,
-		AssetMetadata,
 		ValueQuery,
 	>;
 
@@ -117,34 +95,6 @@ pub mod pallet {
 		AssetBalance,
 		ValueQuery,
 	>;
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub assets: Vec<T::AssetId>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				assets: Default::default(),
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			for id in self.assets.iter() {
-				Asset::<T>::insert(
-					id,
-					AssetDetails {
-						supply: U256::zero(),
-						accounts: 0,
-					}
-				);
-			}
-		}
-	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -171,25 +121,7 @@ pub mod pallet {
 
 		/// Get the supply of an asset `id`.
 		pub fn supply(id: T::AssetId) -> U256 {
-			Asset::<T>::get(id)
-				.map(|x| x.supply)
-				.unwrap_or_else(U256::zero)
-		}
-
-		pub(super) fn do_create(id: T::AssetId) -> DispatchResult {
-			ensure!(!Asset::<T>::contains_key(id), Error::<T>::InUse);
-
-			Asset::<T>::insert(
-				id,
-				AssetDetails {
-					supply: U256::zero(),
-					accounts: 0,
-				}
-			);
-
-			Pallet::<T>::deposit_event(Event::Created(id));
-
-			Ok(())
+			Asset::<T>::get(id).supply
 		}
 
 		pub(super) fn new_account(
@@ -215,10 +147,7 @@ pub mod pallet {
 			who: &T::AccountId,
 			amount: U256
 		) -> DepositConsequence {
-			let details = match Asset::<T>::get(id) {
-				Some(details) => details,
-				None => return DepositConsequence::UnknownAsset,
-			};
+			let details = Asset::<T>::get(id);
 			if details.supply.checked_add(amount).is_none() {
 				return DepositConsequence::Overflow;
 			}
@@ -240,11 +169,7 @@ pub mod pallet {
 			who: &T::AccountId,
 			amount: U256,
 		) -> WithdrawConsequence {
-			let details = match Asset::<T>::get(id) {
-				Some(details) => details,
-				None => return WithdrawConsequence::UnknownAsset,
-			};
-
+			let details = Asset::<T>::get(id);
 			if details.supply.checked_sub(amount).is_none() {
 				return WithdrawConsequence::Underflow;
 			}
@@ -277,9 +202,7 @@ pub mod pallet {
 				return Ok(())
 			}
 			Self::can_increase(id, who, amount).into_result()?;
-			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
-				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
-
+			Asset::<T>::try_mutate(id, |details| -> DispatchResult {
 				check(details)?;
 
 				Account::<T>::try_mutate(id, who, |account| -> Result<(), DispatchError> {
@@ -311,9 +234,7 @@ pub mod pallet {
 				return Ok(())
 			}
 			Self::can_decrease(id, who, amount).into_result()?;
-			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
-				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
-
+			Asset::<T>::try_mutate(id, |details| -> DispatchResult {
 				check(details)?;
 
 				Account::<T>::try_mutate_exists(id, who, |maybe_account| -> Result<(), DispatchError> {
@@ -343,9 +264,7 @@ pub mod pallet {
 
 			let mut source_account = Account::<T>::get(id, &source);
 
-			Asset::<T>::try_mutate(id, |maybe_details| -> DispatchResult {
-				let details = maybe_details.as_mut().ok_or(TokenError::UnknownAsset)?;
-
+			Asset::<T>::try_mutate(id, |details| -> DispatchResult {
 				// Skip if source == dest
 				if source == dest {
 					return Ok(())
@@ -377,42 +296,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(super) fn do_teleport(id: T::AssetId, source: &T::AccountId, dest: &T::AccountId, amount: U256) -> DispatchResult {
-
-
-		pub(super) fn set_metadata(
-			id: T::AssetId,
-			name: Vec<u8>,
-			symbol: Vec<u8>,
-			decimals: u8,
-		) -> DispatchResult {
-			ensure!(name.len() <= T::StringLimit::get() as usize, Error::<T>::BadMetadata);
-			ensure!(symbol.len() <= T::StringLimit::get() as usize, Error::<T>::BadMetadata);
-
-			let details = Asset::<T>::get(id).ok_or(TokenError::UnknownAsset)?;
-
-			Metadata::<T>::try_mutate_exists(id, |metadata| {
-				*metadata = Some(AssetMetadata {
-					name: name.clone(),
-					symbol: symbol.clone(),
-					decimals
-				});
-				Ok(())
-			})
-		}
 	}
 
 	impl<T: Config> tokens::Inspect<T::AccountId> for Pallet<T> {
 		type AssetId = T::AssetId;
 
-		fn exists(asset: Self::AssetId) -> bool {
-			match Asset::<T>::get(asset) {
-				Some(_) => true,
-				None => false,
-			}
-		}
-
-		fn balance(asset: Self::AssetId, who: &AccountId) -> U256 {
+		fn balance(asset: Self::AssetId, who: &T::AccountId) -> U256 {
 			Pallet::<T>::balance(asset, who)
 		}
 
@@ -446,107 +335,51 @@ pub mod pallet {
 		) -> DispatchResult {
 			Pallet::<T>::do_transfer(asset, source, dest, amount)
 		}
+	}
 
-		fn teleport(
-			asset: Self::AssetId,
+	pub struct TokenAdaptor<T, ID>(sp_std::marker::PhantomData<(T, ID)>);
+
+	impl<T, ID> tokens::token::Inspect<T::AccountId> for TokenAdaptor<T, ID>
+	where
+		T: Config,
+		ID: Get<T::AssetId>,
+	{
+		fn balance(who: &T::AccountId) -> U256 {
+			Pallet::<T>::balance(ID::get(), who)
+		}
+
+		fn total_issuance() -> U256 {
+			Pallet::<T>::supply(ID::get())
+		}
+
+		fn can_deposit(who: &T::AccountId, amount: U256) -> DepositConsequence {
+			Pallet::<T>::can_increase(ID::get(), who, amount)
+		}
+
+		fn can_withdraw(who: &T::AccountId, amount: U256) -> WithdrawConsequence {
+			Pallet::<T>::can_decrease(ID::get(), who, amount)
+		}
+	}
+
+	impl<T, ID> tokens::token::Mutate<T::AccountId> for TokenAdaptor<T, ID>
+	where
+		T: Config,
+		ID: Get<T::AssetId>,
+	{
+		fn mint(who: &T::AccountId, amount: U256) -> DispatchResult {
+			Pallet::<T>::do_issue(ID::get(), who, amount)
+		}
+
+		fn burn(who: &T::AccountId, amount: U256) -> DispatchResult {
+			Pallet::<T>::do_burn(ID::get(), who, amount)
+		}
+
+		fn transfer(
 			source: &T::AccountId,
 			dest: &T::AccountId,
 			amount: U256
 		) -> DispatchResult {
-			Pallet::<T>::decrease_balance(asset, source, amount, |_| {})?;
-			Pallet::<T>::increase_balance(asset, dest, amount, |_| {})?;
+			Pallet::<T>::do_transfer(ID::get(), source, dest, amount)
 		}
 	}
-
-
-
 }
-
-// pub trait FungibleAssets<AccountId, AssetId>
-// {
-// 	fn create(asset_id: AssetId) -> DispatchResult;
-
-// 	fn set_metadata(
-// 		asset_id: AssetId,
-// 		name: Vec<u8>,
-// 		symbol: Vec<u8>,
-// 		decimals: u8
-// 	) -> DispatchResult;
-
-// 	fn supply(id: AssetId) -> U256;
-
-// 	fn balance(id: AssetId, who: &AccountId) -> U256;
-
-// 	fn transfer(
-// 		id: AssetId,
-// 		from: &AccountId,
-// 		to: &AccountId,
-// 		amount: U256
-// 	) -> DispatchResult;
-
-// 	fn withdraw(
-// 		id: AssetId,
-// 		who: &AccountId,
-// 		amount: U256
-// 	) -> DispatchResult;
-
-// 	fn deposit(
-// 		id: AssetId,
-// 		who: &AccountId,
-// 		amount: U256
-// 	) -> DispatchResult;
-// }
-
-// impl<T: Config> FungibleAssets<T::AccountId, T::AssetId> for Pallet<T> {
-
-// 	fn create(id: T::AssetId) -> Result<T::AssetId, DispatchError> {
-// 		ensure!(!Asset::<T>::contains_key(id), Error::<T>::InUse);
-
-// 		Asset::<T>::insert(id, AssetDetails {
-// 			supply: U256::zero(),
-// 		});
-
-// 		Pallet::<T>::deposit_event(Event::Created(id));
-// 	}
-
-// 	fn supply(id: T::AssetId) -> U256 {
-// 		Asset::<T>::get(id).map(|x| x.supply).unwrap_or_else(U256::zero())
-// 	}
-
-// 	fn balance(id: T::AssetId, who: &T::AccountId) -> U256 {
-// 		<Account<T>>::get(id, who)
-// 	}
-
-// 	fn withdraw(asset_id: T::AssetId, who: &T::AccountId, amount: U256) -> DispatchResult  {
-// 		if amount.is_zero() {
-// 			return Ok(())
-// 		}
-// 		<Balances<T>>::try_mutate(asset_id, who, |balance| -> Result<(), DispatchError> {
-// 			let current_total_issuance = Self::total_issuance(asset_id);
-// 			let new_total_issuance = current_total_issuance.checked_sub(amount)
-// 				.ok_or(Error::<T>::TotalIssuanceUnderflow)?;
-// 			*balance = balance.checked_sub(amount)
-// 				.ok_or(Error::<T>::InsufficientBalance)?;
-// 			<TotalIssuance<T>>::insert(asset_id, new_total_issuance);
-// 			Ok(())
-// 		})
-// 	}
-
-// 	fn transfer(
-// 		asset_id: T::AssetId,
-// 		from: &T::AccountId,
-// 		to: &T::AccountId,
-// 		amount: U256)
-// 	-> DispatchResult {
-// 		if amount.is_zero() || from == to {
-// 			return Ok(())
-// 		}
-// 		<Balances<T>>::try_mutate(asset_id, from, |from_balance| -> DispatchResult {
-// 			<Balances<T>>::try_mutate(asset_id, to, |to_balance| -> DispatchResult {
-// 				*from_balance = from_balance.checked_sub(amount).ok_or(Error::<T>::InsufficientBalance)?;
-// 				*to_balance = to_balance.checked_add(amount).ok_or(Error::<T>::BalanceOverflow)?;
-// 				Ok(())
-// 			})
-// 		})
-// 	}
-// }
