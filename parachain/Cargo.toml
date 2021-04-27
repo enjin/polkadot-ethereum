@@ -103,7 +103,6 @@ members = [
     "pallets/incentivized-channel",
     "pallets/dispatch",
     "pallets/assets",
-    "pallets/assetsv3",
     "pallets/verifier-lightclient",
     "pallets/eth-app",
     "pallets/erc20-app",

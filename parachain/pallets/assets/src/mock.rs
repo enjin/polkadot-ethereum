@@ -4,7 +4,7 @@ use super::*;
 use sp_core::H256;
 use frame_support::parameter_types;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup, IdentifyAccount, Verify}, testing::Header, MultiSignature
+	traits::{BlakeTwo256, IdentityLookup}, testing::Header, MultiSignature
 };
 use sp_std::convert::From;
 
@@ -25,13 +25,12 @@ frame_support::construct_runtime!(
 );
 
 pub type Signature = MultiSignature;
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = ();
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -41,7 +40,7 @@ impl system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
+	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -57,13 +56,22 @@ impl system::Config for Test {
 	type OnSetCode = ();
 }
 
+parameter_types! {
+	pub const StringLimit: u32 = 32;
+}
+
 impl assets::Config for Test {
 	type Event = Event;
+
+	type AssetId = u32;
+
+	type StringLimit = StringLimit;
+
 	type WeightInfo = ();
 }
 
-pub fn new_tester() -> sp_io::TestExternalities {
-	let storage = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	let storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut ext: sp_io::TestExternalities = storage.into();
 	ext.execute_with(|| System::set_block_number(1));

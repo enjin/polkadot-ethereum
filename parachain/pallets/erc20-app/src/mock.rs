@@ -13,7 +13,7 @@ use sp_runtime::{
 };
 use frame_system as system;
 
-use artemis_core::{ChannelId, AssetId, OutboundRouter};
+use artemis_core::{ChannelId, OutboundRouter};
 
 use crate as erc20_app;
 
@@ -69,6 +69,7 @@ impl system::Config for Test {
 
 impl artemis_assets::Config for Test {
 	type Event = Event;
+	type AssetId = artemis_core::AssetId;
 	type WeightInfo = ();
 }
 
@@ -91,13 +92,9 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
 	}
 }
 
-parameter_types! {
-	pub const EthAssetId: AssetId = AssetId::ETH;
-}
-
 impl erc20_app::Config for Test {
 	type Event = Event;
-	type Assets = Assets;
+	type Tokens = Assets;
 	type OutboundRouter = MockOutboundRouter<Self::AccountId>;
 	type CallOrigin = artemis_dispatch::EnsureEthereumAccount;
 	type WeightInfo = ();

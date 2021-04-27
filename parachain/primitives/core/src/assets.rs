@@ -9,3 +9,9 @@ pub enum AssetId {
 	Ether,
 	Token(H160)
 }
+
+impl Default for AssetId {
+	fn default() -> Self {
+		AssetId::Ether
+	}
+}

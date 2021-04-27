@@ -17,8 +17,9 @@ pub trait AssetId: FullCodec + Copy + Default + Eq + PartialEq {}
 impl<T: FullCodec + Copy + Default + Eq + PartialEq> AssetId for T {}
 
 pub trait Inspect<AccountId> {
-
 	type AssetId: AssetId;
+
+	fn exists(id: Self::AssetId) -> bool;
 
 	fn total_issuance(id: Self::AssetId) -> U256;
 
@@ -48,4 +49,8 @@ pub trait Mutate<AccountId>: Inspect<AccountId> {
 		dest: &AccountId,
 		amount: U256
 	) -> DispatchResult;
+}
+
+pub trait Create<AccountId>: Inspect<AccountId> {
+	fn create(id: Self::AssetId) -> DispatchResult;
 }

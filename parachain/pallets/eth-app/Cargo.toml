@@ -25,6 +25,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "ro
 ethabi = { git = "https://github.com/Snowfork/ethabi-decode.git", package = "ethabi-decode", branch = "master", default-features = false }
 
 artemis-core = { path = "../../primitives/core", default-features = false }
+artemis-tokens = { path = "../../primitives/tokens", default-features = false }
 artemis-ethereum = { path = "../../primitives/ethereum", default-features = false }
 
 [dev-dependencies]
@@ -45,6 +46,7 @@ std = [
     "sp-io/std",
     "sp-runtime/std",
     "artemis-core/std",
+    "artemis-tokens/std",
     "artemis-ethereum/std",
     "ethabi/std",
     "rlp/std"

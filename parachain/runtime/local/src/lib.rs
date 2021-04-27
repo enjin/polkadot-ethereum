@@ -44,6 +44,7 @@ use pallet_transaction_payment::FeeDetails;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 
 pub use artemis_core::{AssetId, OutboundRouter, ChannelId, MessageId};
+use artemis_tokens::single::ItemOf;
 use dispatch::EnsureEthereumAccount;
 
 pub use verifier_lightclient::{EthereumHeader, EthereumDifficultyConfig};
@@ -488,16 +489,17 @@ impl commitments::Config for Runtime {
 
 impl assets::Config for Runtime {
 	type Event = Event;
+	type AssetId = artemis_core::AssetId;
 	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const EthAssetId: AssetId = AssetId::ETH;
+	pub const Ether: AssetId = AssetId::Ether;
 }
 
 impl eth_app::Config for Runtime {
 	type Event = Event;
-	type Asset = assets::SingleAssetAdaptor<Runtime, EthAssetId>;
+	type Asset = ItemOf<Assets, Ether, Self::AccountId>;
 	type OutboundRouter = SimpleOutboundRouter<Runtime>;
 	type CallOrigin = EnsureEthereumAccount;
 	type WeightInfo = ();
@@ -505,7 +507,7 @@ impl eth_app::Config for Runtime {
 
 impl erc20_app::Config for Runtime {
 	type Event = Event;
-	type Assets = assets::Module<Runtime>;
+	type Tokens = Assets;
 	type OutboundRouter = SimpleOutboundRouter<Runtime>;
 	type CallOrigin = EnsureEthereumAccount;
 	type WeightInfo = ();

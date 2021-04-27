@@ -28,12 +28,14 @@ use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use sp_core::{H160, U256};
 
-use artemis_core::{ChannelId, OutboundRouter, AssetId, MultiAsset};
+use artemis_core::{ChannelId, OutboundRouter, AssetId};
+use artemis_tokens::multi::{Inspect, Mutate, Create};
 
 mod payload;
+mod benchmarking;
+
 use payload::OutboundPayload;
 
-mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -55,7 +57,8 @@ impl WeightInfo for () {
 pub trait Config: system::Config {
 	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
-	type Assets: MultiAsset<<Self as system::Config>::AccountId>;
+	type Tokens: Mutate<<Self as system::Config>::AccountId, AssetId = AssetId> +
+	             Create<<Self as system::Config>::AccountId, AssetId = AssetId>;
 
 	type OutboundRouter: OutboundRouter<Self::AccountId>;
 
@@ -103,7 +106,7 @@ decl_module! {
 		pub fn burn(origin, channel_id: ChannelId, token: H160, recipient: H160, amount: U256) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			T::Assets::withdraw(AssetId::Token(token), &who, amount)?;
+			T::Tokens::burn(AssetId::Token(token), &who, amount)?;
 
 			let message = OutboundPayload {
 				token: token,
@@ -127,9 +130,15 @@ decl_module! {
 			}
 
 			let recipient = T::Lookup::lookup(recipient)?;
-			T::Assets::deposit(AssetId::Token(token), &recipient, amount)?;
-			Self::deposit_event(RawEvent::Minted(token, sender, recipient, amount));
 
+			let asset = AssetId::Token(token);
+
+			if !T::Tokens::exists(asset) {
+				T::Tokens::create(asset)?;
+			}
+			T::Tokens::mint(asset, &recipient, amount)?;
+
+			Self::deposit_event(RawEvent::Minted(token, sender, recipient, amount));
 			Ok(())
 		}
 

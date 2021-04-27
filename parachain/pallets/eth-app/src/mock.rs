@@ -5,6 +5,7 @@ use sp_core::{H160, H256};
 use frame_support::{
 	parameter_types,
 	dispatch::{DispatchError, DispatchResult},
+	traits::GenesisBuild,
 };
 use sp_runtime::{
 	traits::{
@@ -14,7 +15,7 @@ use sp_runtime::{
 use frame_system as system;
 
 use artemis_core::{ChannelId, AssetId, OutboundRouter};
-use artemis_assets::SingleAssetAdaptor;
+use artemis_tokens::single::ItemOf;
 
 use crate as eth_app;
 
@@ -28,7 +29,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Event<T>},
-		Assets: artemis_assets::{Pallet, Call, Storage, Event<T>},
+		Assets: artemis_assets::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Dispatch: artemis_dispatch::{Pallet, Call, Storage, Origin, Event<T>},
 		ETHApp: eth_app::{Pallet, Call, Config, Storage, Event<T>},
 	}
@@ -70,6 +71,7 @@ impl system::Config for Test {
 
 impl artemis_assets::Config for Test {
 	type Event = Event;
+	type AssetId = artemis_core::AssetId;
 	type WeightInfo = ();
 }
 
@@ -93,18 +95,16 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
 }
 
 parameter_types! {
-	pub const EthAssetId: AssetId = AssetId::ETH;
+	pub const Ether: AssetId = AssetId::Ether;
 }
 
 impl eth_app::Config for Test {
 	type Event = Event;
-	type Asset = Asset;
+	type Asset = ItemOf<Assets, Ether, Self::AccountId>;
 	type OutboundRouter = MockOutboundRouter<Self::AccountId>;
 	type CallOrigin = artemis_dispatch::EnsureEthereumAccount;
 	type WeightInfo = ();
 }
-
-pub type Asset = SingleAssetAdaptor<Test, EthAssetId>;
 
 pub fn new_tester() -> sp_io::TestExternalities {
 	let mut storage = system::GenesisConfig::default().build_storage::<Test>().unwrap();
@@ -113,6 +113,11 @@ pub fn new_tester() -> sp_io::TestExternalities {
 		address: H160::repeat_byte(1),
 	};
 	config.assimilate_storage(&mut storage).unwrap();
+
+	let assconfig: artemis_assets::GenesisConfig<Test> = artemis_assets::GenesisConfig {
+		assets: vec![AssetId::Ether]
+	};
+	assconfig.assimilate_storage(&mut storage).unwrap();
 
 	let mut ext: sp_io::TestExternalities = storage.into();
 	ext.execute_with(|| System::set_block_number(1));

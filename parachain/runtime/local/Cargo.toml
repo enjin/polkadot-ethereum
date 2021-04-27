@@ -45,6 +45,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot.git", branch = "r
 xcm-builder = { git = "https://github.com/paritytech/polkadot.git", branch = "rococo-v1", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot.git", branch = "rococo-v1", default-features = false }
 artemis-core = { path = "../../primitives/core", default-features = false }
+artemis-tokens = { path = "../../primitives/tokens", default-features = false }
 artemis-transfer = { path = "../../pallets/transfer", default-features = false }
 artemis-xcm-support = { path = "../../primitives/xcm-support", default-features = false }
 basic-channel = { path = "../../pallets/basic-channel", package = "artemis-basic-channel", default-features = false }
@@ -99,6 +100,10 @@ std = [
     "xcm-executor/std",
     "xcm-builder/std",
     "polkadot-parachain/std",
+    "artemis-core/std",
+    "artemis-tokens/std",
+    "artemis-transfer/std",
+    "artemis-xcm-support/std",
     "basic-channel/std",
     "incentivized-channel/std",
     "verifier-lightclient/std",
@@ -108,8 +113,6 @@ std = [
     "eth-app/std",
     "erc20-app/std",
     "commitments/std",
-    "artemis-transfer/std",
-    "artemis-xcm-support/std",
     "runtime-common/std",
 ]
 runtime-benchmarks = [

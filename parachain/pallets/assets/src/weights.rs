@@ -1,6 +1,4 @@
-
 use frame_support::weights::Weight;
-
 
 /// Weight functions needed for this pallet.
 pub trait WeightInfo {

@@ -134,7 +134,6 @@ decl_module! {
 }
 
 impl<T: Config> Module<T> {
-
 	// Transfer DOT upwards to relay chain
 	fn make_xcm_upward_transfer(recipient: &T::AccountId, amount: T::Balance) -> Xcm {
 		Xcm::WithdrawAsset {

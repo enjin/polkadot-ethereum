@@ -2,7 +2,9 @@ use crate::mock::{new_tester, Event, System, AccountId, Origin, Assets, ERC20App
 use frame_support::{assert_ok, assert_noop, dispatch::DispatchError};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_core::H160;
-use artemis_core::{ChannelId, AssetId, MultiAsset};
+use artemis_core::{ChannelId, AssetId};
+
+use artemis_tokens::multi::{Inspect, Mutate, Create};
 
 use crate::RawEvent;
 
@@ -42,7 +44,9 @@ fn burn_should_emit_bridge_event() {
 		let token_id = H160::repeat_byte(1);
 		let recipient = H160::repeat_byte(2);
 		let bob: AccountId = Keyring::Bob.into();
-		Assets::deposit(AssetId::Token(token_id), &bob, 500.into()).unwrap();
+		let asset = AssetId::Token(token_id);
+		Assets::create(asset).unwrap();
+		Assets::mint(asset, &bob, 500.into()).unwrap();
 
 		assert_ok!(ERC20App::burn(
 			Origin::signed(bob.clone()),
@@ -64,8 +68,10 @@ fn should_not_burn_on_commitment_failure() {
 		let token_id = H160::repeat_byte(1);
 		let sender: AccountId = Keyring::Bob.into();
 		let recipient = H160::repeat_byte(9);
+		let asset = AssetId::Token(token_id);
 
-		Assets::deposit(AssetId::Token(token_id), &sender, 500.into()).unwrap();
+		Assets::create(asset).unwrap();
+		Assets::mint(asset, &sender, 500.into()).unwrap();
 
 		assert_noop!(
 			ERC20App::burn(

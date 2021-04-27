@@ -220,24 +220,6 @@ name = "artemis-assets"
 version = "0.1.1"
 dependencies = [
  "artemis-core",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "rustc-hex",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "artemis-assetsv3"
-version = "0.1.1"
-dependencies = [
- "artemis-core",
  "artemis-tokens",
  "frame-benchmarking",
  "frame-support",
@@ -357,6 +339,7 @@ dependencies = [
  "artemis-core",
  "artemis-dispatch",
  "artemis-ethereum",
+ "artemis-tokens",
  "ethabi-decode",
  "frame-benchmarking",
  "frame-support",
@@ -381,6 +364,7 @@ dependencies = [
  "artemis-core",
  "artemis-dispatch",
  "artemis-ethereum",
+ "artemis-tokens",
  "ethabi-decode",
  "frame-benchmarking",
  "frame-support",
@@ -555,6 +539,7 @@ name = "artemis-xcm-support"
 version = "0.1.0"
 dependencies = [
  "artemis-core",
+ "artemis-tokens",
  "frame-support",
  "parity-scale-codec",
  "sp-core",
@@ -4293,6 +4278,7 @@ dependencies = [
  "artemis-eth-app",
  "artemis-incentivized-channel",
  "artemis-runtime-common",
+ "artemis-tokens",
  "artemis-transfer",
  "artemis-xcm-support",
  "cumulus-pallet-parachain-system",

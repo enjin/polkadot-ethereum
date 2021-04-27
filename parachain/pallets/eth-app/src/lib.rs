@@ -28,7 +28,7 @@ use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use sp_core::{H160, U256};
 
-use artemis_core::{ChannelId, SingleAsset, OutboundRouter};
+use artemis_core::{ChannelId, OutboundRouter};
 
 mod payload;
 use payload::OutboundPayload;
@@ -40,6 +40,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+use artemis_tokens::single::Mutate;
 
 /// Weight functions needed for this pallet.
 pub trait WeightInfo {
@@ -55,7 +57,7 @@ impl WeightInfo for () {
 pub trait Config: system::Config {
 	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
 
-	type Asset: SingleAsset<<Self as system::Config>::AccountId>;
+	type Asset: Mutate<<Self as system::Config>::AccountId>;
 
 	type OutboundRouter: OutboundRouter<Self::AccountId>;
 
@@ -102,7 +104,7 @@ decl_module! {
 		pub fn burn(origin, channel_id: ChannelId, recipient: H160, amount: U256) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			T::Asset::withdraw(&who, amount)?;
+			T::Asset::burn(&who, amount)?;
 
 			let message = OutboundPayload {
 				sender: who.clone(),
@@ -125,7 +127,7 @@ decl_module! {
 			}
 
 			let recipient = T::Lookup::lookup(recipient)?;
-			T::Asset::deposit(&recipient, amount)?;
+			T::Asset::mint(&recipient, amount)?;
 			Self::deposit_event(RawEvent::Minted(sender, recipient.clone(), amount));
 
 			Ok(())
