@@ -2,7 +2,6 @@ use frame_support::traits::{SameOrOther, TryDrop};
 
 use sp_core::U256;
 use sp_std::marker::PhantomData;
-use sp_runtime::TokenError;
 
 use super::*;
 pub trait Balanced<AccountId>: Inspect<AccountId> {
@@ -72,11 +71,6 @@ pub trait Balanced<AccountId>: Inspect<AccountId> {
 	}
 }
 pub trait Unbalanced<AccountId>: Inspect<AccountId> {
-
-	/// Set the balance of `who` to `amount`. If this cannot be done for some reason (e.g.
-	/// because the account cannot be created or an overflow) then an `Err` is returned.
-	fn set_balance(who: &AccountId, amount: U256) -> DispatchResult;
-
 	/// Set the total issuance of `asset` to `amount`.
 	fn set_total_issuance(amount: U256);
 
@@ -85,35 +79,15 @@ pub trait Unbalanced<AccountId>: Inspect<AccountId> {
 	///
 	/// Minimum balance will be respected and the returned imbalance may be up to
 	/// `Self::minimum_balance() - 1` greater than `amount`.
-	fn decrease_balance(who: &AccountId, amount: U256)
-		-> Result<U256, DispatchError>
-	{
-		let old_balance = Self::balance(who);
-		let (new_balance, amount) = if old_balance < amount {
-			Err(TokenError::NoFunds)?
-		} else {
-			(old_balance - amount, amount)
-		};
-		// Defensive only - this should not fail now.
-		Self::set_balance(who, new_balance)?;
-		Ok(amount)
-	}
+	fn decrease_balance(who: &AccountId, amount: U256) -> Result<U256, DispatchError>;
 
 	/// Increase the balance of `who` by `amount`. If it cannot be increased by that amount
 	/// for some reason, return `Err` and don't increase it at all. If Ok, return the imbalance.
 	///
 	/// Minimum balance will be respected and an error will be returned if
 	/// `amount < Self::minimum_balance()` when the account of `who` is zero.
-	fn increase_balance(who: &AccountId, amount: U256)
-		-> Result<U256, DispatchError>
-	{
-		let old_balance = Self::balance(who);
-		let new_balance = old_balance.checked_add(amount).ok_or(TokenError::Overflow)?;
-		if old_balance != new_balance {
-			Self::set_balance(who, new_balance)?;
-		}
-		Ok(amount)
-	}
+	fn increase_balance(who: &AccountId, amount: U256) -> Result<U256, DispatchError>;
+
 }
 
 pub struct DecreaseIssuance<AccountId, U>(PhantomData<(AccountId, U)>);

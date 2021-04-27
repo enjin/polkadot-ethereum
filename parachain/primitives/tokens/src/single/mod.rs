@@ -95,9 +95,6 @@ impl<
 	A: Get<F::AssetId>,
 	AccountId,
 > Unbalanced<AccountId> for ItemOf<F, A, AccountId> {
-	fn set_balance(who: &AccountId, amount: U256) -> DispatchResult {
-		F::set_balance(A::get(), who, amount)
-	}
 	fn set_total_issuance(amount: U256) -> () {
 		F::set_total_issuance(A::get(), amount)
 	}

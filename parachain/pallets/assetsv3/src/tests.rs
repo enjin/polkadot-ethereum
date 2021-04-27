@@ -219,19 +219,3 @@ fn account_lifecycle_should_work() {
 		assert_eq!(Account::<Test>::iter_prefix(0).count(), 0);
 	});
 }
-
-#[test]
-fn set_metadata_should_work() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::do_create(0));
-
-		assert_ok!(Assets::set_metadata(0, vec![0, 1, 2], vec![0, 1, 2], 18));
-		assert!(Metadata::<Test>::contains_key(0));
-
-		// cannot add oversized metadata
-		assert_noop!(
-			Assets::set_metadata(0, vec![0u8; 100], vec![0, 1, 2], 18),
-			Error::<Test>::BadMetadata,
-		);
-	});
-}
