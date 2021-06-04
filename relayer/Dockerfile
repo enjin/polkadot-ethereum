@@ -1,4 +1,4 @@
-FROM golang:1.14
+FROM golang:1.16-stretch
 WORKDIR /opt/relayer
 ADD . .
 RUN go build -v -o build/artemis-relay main.go
