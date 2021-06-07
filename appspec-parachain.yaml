@@ -1,0 +1,21 @@
+version: 0.0
+
+os: linux
+
+files:
+  - source: /parachain
+    destination: /opt/parachain
+  - source: /polkadot
+    destination: /opt/polkadot
+  - source: /config
+    destination: /opt/config
+
+hooks:
+  ApplicationStart:
+    - location: scripts/start_parachain.sh
+      timeout: 300
+      runas: root
+  ApplicationStop:
+    - location: scripts/stop_parachain.sh
+      timeout: 300
+      runas: root

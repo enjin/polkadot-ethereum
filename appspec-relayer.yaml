@@ -1,0 +1,19 @@
+version: 0.0
+
+os: linux
+
+files:
+  - source: /relayer
+    destination: /opt/relayer
+  - source: /config
+    destination: /opt/config
+
+hooks:
+  ApplicationStart:
+    - location: scripts/start_relayer.sh
+      timeout: 300
+      runas: root
+  ApplicationStop:
+    - location: scripts/stop_relayer.sh
+      timeout: 300
+      runas: root

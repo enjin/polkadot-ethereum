@@ -1,0 +1,74 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+      nodejs: 14
+      golang: 1.15
+    commands:
+      - apt update
+      - apt install -y git clang curl libssl-dev llvm libudev-dev psmisc
+      - curl https://getsubstrate.io -sSf | bash -s -- --fast
+      - source $HOME/.cargo/env
+      - rustup toolchain install nightly-2021-04-24-x86_64-unknown-linux-gnu
+      - rustup default nightly-2021-04-24-x86_64-unknown-linux-gnu
+      - rustup target add wasm32-unknown-unknown --toolchain nightly-2021-04-24-x86_64-unknown-linux-gnu
+      - cd /tmp
+      - git clone https://github.com/magefile/mage
+      - cd mage
+      - go run bootstrap.go
+  pre_build:
+    commands:
+      - aws --profile $AWS_PROFILE configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+      - aws --profile $AWS_PROFILE configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+      - git clone -n https://github.com/snowfork/polkadot.git /tmp/polkadot
+      - cd /tmp/polkadot
+      - git checkout enable_beefy_on_rococo
+      - cargo build --release
+      - yarn global add truffle polkadot-launch@1.4.0
+      - cd $CODEBUILD_SRC_DIR/test
+      - yarn
+      - bash scripts/start-services.sh
+      - yarn test
+  build:
+    commands:
+      - echo Starting contract deployment on `date`
+      - export CONFIG_DIR=/tmp/artemis-config
+      - cd ethereum
+      - yarn
+      - npx truffle deploy --network ropsten
+      - echo Contract deployment completed on `date`
+      - echo "Generating configuration from contracts"
+      - export PARACHAIN_NODE=$(aws --profile $AWS_PROFILE ec2 describe-instances --filters Name=tag:role,Values=parachain --query Reservations[*].Instances[*].[PublicIpAddress] --output text)
+      - truffle exec scripts/dumpTestConfig.js $CONFIG_DIR $PARACHAIN_NODE --network ropsten
+      - $CODEBUILD_SRC_DIR/parachain/target/release/artemis build-spec --disable-default-bootnode > $CONFIG_DIR/spec.json
+      - export ETHEREUM_INITIAL_HEADER=$(curl http://localhost:8545 -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params": ["latest", false],"id":1}' | node ../test/scripts/helpers/transformEthHeader.js)
+      - node $CODEBUILD_SRC_DIR/test/scripts/helpers/overrideParachainSpec.js $CONFIG_DIR/spec.json genesis.runtime.verifierLightclient.initialDifficulty 0x0 genesis.runtime.verifierLightclient.initialHeader "$ETHEREUM_INITIAL_HEADER" genesis.runtime.parachainInfo.parachainId 200 para_id 200
+      - jq -s '.[0] * .[1]' config.json $CONFIG_DIR/test/config/launchConfigOverrides.json | jq ".parachains[0].bin = \"$bin\"" | jq ".parachains[0].chain = \"$CONFIG_DIR/spec.json\"" | jq ".relaychain.bin = \"/tmp/polkadot/target/release/polkadot\"" > $CONFIG_DIR/polkadotLaunchConfig.json
+cache:
+  paths:
+    - /tmp/polkadot
+    - $CODEBUILD_SRC_DIR
+
+artifacts:
+  secondary-artifacts:
+    polkadot:
+      base_directory: /tmp/polkadot/target/release
+      files:
+        - polkadot
+    relayer:
+      base_directory: $CODEBUILD_SRC_DIR/relayer/build
+      files:
+        - artemis-relay
+    config:
+      base_directory: $CONFIG_DIR
+      files:
+        - config.toml
+        - polkadotConfig.json
+        - spec.json
+        - appspec-parachain.yaml
+        - appspec-relayer.yaml

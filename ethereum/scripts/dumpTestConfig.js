@@ -51,10 +51,10 @@ const dump = (tmpDir, channels, bridge) => {
             lightclientbridge: bridge.lightclientbridge.address
         },
         parachain: {
-            endpoint: "ws://127.0.0.1:11144/"
+            endpoint: `ws://${parachainNode}:11144/`
         },
         relaychain: {
-            endpoint: "ws://127.0.0.1:9944/"
+            endpoint: `ws://${parachainNode}:9944/`
         },
         database: {
             dialect: "sqlite3",
@@ -81,12 +81,13 @@ const dump = (tmpDir, channels, bridge) => {
 module.exports = async (callback) => {
     try {
         let configDir = process.argv[4].toString();
+        let parachainNode = process.argv[5].toString();
         bridge.lightclientbridge = await bridgeContracts.lightclientbridge.deployed();
         channels.basic.inbound = await channelContracts.basic.inbound.deployed();
         channels.basic.outbound = await channelContracts.basic.outbound.deployed();
         channels.incentivized.inbound = await channelContracts.incentivized.inbound.deployed();
         channels.incentivized.outbound = await channelContracts.incentivized.outbound.deployed();
-        await dump(configDir, channels, bridge);
+        await dump(configDir, channels, bridge, parachainNode);
     } catch (error) {
         callback(error)
     }
