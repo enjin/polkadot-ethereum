@@ -1,0 +1,84 @@
+version: '3'
+services:
+  node_alice:
+    build:
+      context: .
+    ports:
+      - "30444:30444"
+      - "9933:9933"
+      - "9944:9944"
+    image: test/polkadot:latest
+    volumes:
+      - "parachainvol:/data"
+    command: polkadot --chain=/data/rococo-local-raw.json --tmp --alice --port 30444 --rpc-port 9933 --ws-port 9944 --enable-offchain-indexing=true --offchain-worker=Always
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.1
+
+  node_bob:
+    ports:
+      - "30555:30555"
+      - "9935:9935"
+      - "9955:9955"
+    image: test/polkadot:latest
+    volumes:
+      - "parachainvol:/data"
+    command: polkadot --chain=/data/rococo-local-raw.json --tmp --bob --port 30555 --rpc-port 9935 --ws-port 9955 --enable-offchain-indexing=true --offchain-worker=Always
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.2
+
+  node_parachain:
+    build:
+      context: .
+    ports:
+      - "31200:31200"
+      - "9937:9937"
+      - "11144:11144"
+    image: test/artemis:latest
+    volumes:
+      - "parachainvol:/data"
+    command: /bin/bash -c '/usr/local/bin/artemis --tmp --ws-port=11144 --port=31200 --rpc-port 9937 --execution=native -lruntime=debug,import_header=trace,bridge=trace --offchain-worker=Always --enable-offchain-indexing=true --rpc-cors=all --parachain-id=200 --chain=spec.json --collator --force-authoring -- --chain=/data/rococo-local.json --execution=wasm'
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.6
+
+  etherum:
+    build:
+      context: .
+    ports:
+      - "8545:8545"
+    volumes:
+      - "parachainvol:/data"
+    image: test/etherum:latest
+    command: /bin/sh -c "./docker/start_ganache.sh& ./docker/wait-for -t 32 127.0.0.1:8545 -- ./docker/deploy_contracts.sh && ./docker/restart_ganache.sh"
+    entrypoint: ""
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.3
+
+  update_spec:
+    build:
+      context: .
+    volumes:
+      - "parachainvol:/data"
+    image : test/artemis:latest
+    command: /bin/bash -c 'sed "s/\[genesis_head\]/$$(/usr/local/bin/artemis export-genesis-state --parachain-id=200 --chain=spec.json)/g" rococo-local.json > /data/rococo-local.json'
+
+  build_spec:
+    build:
+      context: .
+    volumes:
+      - "parachainvol:/data"
+    image : test/polkadot:latest
+    command: bash -c 'polkadot build-spec --chain=/data/rococo-local.json --raw > /data/rococo-local-raw.json'
+
+volumes:
+  parachainvol:
+
+networks:
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

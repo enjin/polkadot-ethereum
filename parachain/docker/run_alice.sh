@@ -1,0 +1,1 @@
+sudo docker run -v parachainvol:/data --network host -it test/polkadot:latest bash -c "/usr/local/bin/polkadot --chain=/data/rococo-local-raw.json --tmp --bob --ws-port=9955 --port=30555 --enable-offchain-indexing=true --offchain-worker=Always"

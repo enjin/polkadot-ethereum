@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/assets/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/basic-channel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/commitments/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/dispatch/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/dot-app/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/erc20-app/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/eth-app/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/incentivized-channel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/transfer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/verifier-lightclient/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/pallets/verifier-lightclient/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/primitives/core/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/primitives/core/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/primitives/ethereum/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/primitives/ethereum/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/primitives/testutils/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/primitives/xcm-support/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/runtime/common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/runtime/local/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/runtime/rococo/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/runtime/snowbridge/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/parachain/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/parachain/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

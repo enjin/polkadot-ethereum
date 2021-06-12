@@ -1,0 +1,2 @@
+sudo docker run -v parachainvol:/data --network host -it test/artemis:latest bash -c 'sed "s/\[genesis_head\]/$(/usr/local/bin/artemis export-genesis-state --parachain-id=200 --chain=spec.json)/g" rococo-local.json > /data/rococo-local.json'
+sudo docker run -v parachainvol:/data --network host -it test/polkadot:latest bash -c '/usr/local/bin/polkadot build-spec --chain=/data/rococo-local.json --raw > /data/rococo-local-raw.json'
