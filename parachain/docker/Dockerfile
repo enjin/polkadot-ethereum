@@ -21,7 +21,7 @@ RUN useradd -m -u 1000 -U -s /bin/sh -d /artemis artemis && \
 	mkdir /data && \
 	chown -R artemis:artemis /data && \
 	ln -s /data /artemis/.local/share/artemis && \
-	rm -rf /usr/bin /usr/sbin
+  apt-get update && apt-get install -y netcat
 
 USER artemis
 EXPOSE 30333 9933 9944
@@ -30,4 +30,3 @@ COPY ./docker/rococo-local.json .
 COPY ./docker/spec.json .
 
 EXPOSE 30333 9933 9944
-RUN /usr/local/bin/artemis export-genesis-state --parachain-id=200 --chain=spec.json
