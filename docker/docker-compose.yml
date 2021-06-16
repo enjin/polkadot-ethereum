@@ -10,7 +10,7 @@ services:
     image: test/polkadot-nc:latest
     volumes:
       - "parachainvol:/data"
-    command: bash -c "nc -v -l -p 1234 && polkadot --chain=/data/rococo-local-raw.json --tmp --alice --port 30444 --rpc-port 9933 --ws-port 9944 --enable-offchain-indexing=true --offchain-worker=Always"
+    command: bash -c "nc -v -l -p 1234 && polkadot --chain=/data/rococo-local-raw.json --rpc-methods=unsafe --tmp --alice --port 30444 --rpc-external --ws-external --rpc-cors all --rpc-port 9933 --ws-port 9944 --enable-offchain-indexing=true --offchain-worker=Always"
     networks:
       testing_net:
         ipv4_address: 172.28.1.1
@@ -23,7 +23,7 @@ services:
     image: test/polkadot-nc:latest
     volumes:
       - "parachainvol:/data"
-    command: bash -c "nc -v -l -p 1234 && polkadot --chain=/data/rococo-local-raw.json --tmp --bob --port 30555 --rpc-port 9935 --ws-port 9955 --enable-offchain-indexing=true --offchain-worker=Always"
+    command: bash -c "nc -v -l -p 1234 && polkadot --chain=/data/rococo-local-raw.json --tmp --bob --port 30555 --rpc-external --ws-external --rpc-port 9935 --ws-port 9955 --enable-offchain-indexing=true --offchain-worker=Always"
     networks:
       testing_net:
         ipv4_address: 172.28.1.2
@@ -38,10 +38,26 @@ services:
     image: test/artemis:latest
     volumes:
       - "parachainvol:/data"
-    command: /bin/bash -c 'nc -v -l -p 1234 && /usr/local/bin/artemis --tmp --ws-port=11144 --port=31200 --rpc-port 9937 --execution=native -lruntime=debug,import_header=trace,bridge=trace --offchain-worker=Always --enable-offchain-indexing=true --rpc-cors=all --parachain-id=200 --chain=spec.json --collator --force-authoring -- --chain=/data/rococo-local.json --execution=wasm'
+    command: /bin/bash -c 'nc -v -l -p 1234 && /usr/local/bin/artemis --tmp --rpc-methods=unsafe --ws-port=11144 --port=31200 --rpc-external --ws-external --rpc-port 9937 --execution=native -lruntime=debug,import_header=trace,bridge=trace --offchain-worker=Always --enable-offchain-indexing=true --rpc-cors all --parachain-id=200 --chain=spec.json --collator --force-authoring -- --chain=/data/rococo-local.json --rpc-cors all --ws-external --rpc-external --execution=wasm'
     networks:
       testing_net:
         ipv4_address: 172.28.1.3
+
+
+  relayer:
+    build:
+      context: .
+    image: test/relayer:latest
+    command: /bin/sh -c 'sleep 180 && /usr/local/bin/artemis-relay run --config config.toml'
+    entrypoint: ""
+    environment:
+      - BEEFY_RELAYER_ETHEREUM_KEY=0x935b65c833ced92c43ef9de6bff30703d941bd92a2637cb00cfad389f5862109
+      - PARACHAIN_COMMITMENT_RELAYER_ETHEREUM_KEY=0x8013383de6e5a891e7754ae1ef5a21e7661f1fe67cd47ca8ebf4acd6de66879a
+      - ARTEMIS_PARACHAIN_KEY=//Relay
+      - ARTEMIS_RELAYCHAIN_KEY=//Alice
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.7
 
   etherum:
     build:
