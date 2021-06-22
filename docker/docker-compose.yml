@@ -38,7 +38,7 @@ services:
     image: test/artemis:latest
     volumes:
       - "parachainvol:/data"
-    command: /bin/bash -c 'nc -v -l -p 1234 && /usr/local/bin/artemis --tmp --rpc-methods=unsafe --ws-port=11144 --port=31200 --rpc-external --ws-external --rpc-port 9937 --execution=native -lruntime=debug,import_header=trace,bridge=trace --offchain-worker=Always --enable-offchain-indexing=true --rpc-cors all --parachain-id=200 --chain=spec.json --collator --force-authoring -- --chain=/data/rococo-local.json --rpc-cors all --ws-external --rpc-external --execution=wasm'
+    command: /bin/bash -c 'nc -v -l -p 1234 && /usr/local/bin/artemis --tmp --rpc-methods=unsafe --ws-port=11144 --port=31200 --rpc-external --ws-external --rpc-port 9937 --execution=native -lruntime=debug,import_header=trace,bridge=trace --offchain-worker=Always --enable-offchain-indexing=true --rpc-cors all --parachain-id=200 --chain=/data/spec.json --collator --force-authoring -- --chain=/data/rococo-local.json --rpc-cors all --ws-external --rpc-external --execution=wasm'
     networks:
       testing_net:
         ipv4_address: 172.28.1.3
@@ -47,7 +47,7 @@ services:
   relayer:
     build:
       context: .
-    image: test/relayer:latest
+    image: efinity/relayer:latest
     command: /bin/sh -c 'sleep 180 && /usr/local/bin/artemis-relay run --config config.toml'
     entrypoint: ""
     environment:
@@ -67,7 +67,7 @@ services:
     volumes:
       - "parachainvol:/data"
     image: test/etherum:latest
-    command: /bin/sh -c "./docker/start_ganache.sh& ./docker/wait-for -t 32 127.0.0.1:8545 -- ./docker/deploy_contracts.sh && ./docker/restart_ganache.sh"
+    command: /bin/sh -c "./docker/start_ganache.sh& ./docker/wait-for -t 32 127.0.0.1:8545 -- ./docker/deploy_contracts.sh && pkill node && echo 1 | nc -q 0 172.28.1.5 1234 && ./docker/restart_ganache.sh"
     entrypoint: ""
     networks:
       testing_net:
@@ -78,8 +78,8 @@ services:
       context: .
     volumes:
       - "parachainvol:/data"
-    image : test/artemis:latest
-    command: /bin/bash -c 'sed "s/\[genesis_head\]/$$(/usr/local/bin/artemis export-genesis-state --parachain-id=200 --chain=spec.json)/g" rococo-local.json > /data/rococo-local.json && echo 1 | nc -q 0 172.28.1.6 1234'
+    image : efinity/artemis:latest
+    command: /bin/bash -c 'nc -l -v -p 1234 && ./wait-for.sh -t 32 172.28.1.4:8545 -- ./update_spec.sh && sed "s/\[genesis_head\]/$$(/usr/local/bin/artemis export-genesis-state --parachain-id=200 --chain=spec.json)/g" rococo-local.json > /data/rococo-local.json && mv ./spec.json /data/spec.json && echo 1 | nc -q 0 172.28.1.6 1234'
     networks:
       testing_net:
         ipv4_address: 172.28.1.5

@@ -1,0 +1,34 @@
+[ethereum]
+endpoint = "ws://172.28.1.4:8545/"
+descendants-until-final = 3
+lightclientbridge = "0x83428c7db9815f482a39a1715684dCF755021997"
+
+[ethereum.channels.basic]
+inbound = "0xF8F7758FbcEfd546eAEff7dE24AFf666B6228e73"
+outbound = "0xEE9170ABFbf9421Ad6DD07F6BDec9D89F2B581E0"
+
+[ethereum.channels.incentivized]
+inbound = "0xB1185EDE04202fE62D38F5db72F71e38Ff3E8305"
+outbound = "0xB8EA8cB425d85536b158d661da1ef0895Bb92F1D"
+
+[parachain]
+endpoint = "ws://172.28.1.3:11144/"
+
+[relaychain]
+endpoint = "ws://172.28.1.1:9944/"
+
+[database]
+dialect = "sqlite3"
+dbpath = "tmp.db"
+
+[workers.parachaincommitmentrelayer]
+enabled = true
+restart-delay = 30
+
+[workers.beefyrelayer]
+enabled = true
+restart-delay = 30
+
+[workers.ethrelayer]
+enabled = true
+restart-delay = 30

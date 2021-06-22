@@ -10,23 +10,25 @@ RUN cargo build --$PROFILE --no-default-features --features with-local-runtime
 
 # ===== SECOND STAGE ======
 
-FROM debian:buster-slim
+FROM node:buster-slim
 LABEL description="This is the 2nd stage: a very small image where we copy the Artemis binary."
 ARG PROFILE=release
 USER root
 COPY --from=builder /artemis/target/$PROFILE/artemis /usr/local/bin
 
-RUN useradd -m -u 1000 -U -s /bin/sh -d /artemis artemis && \
-	mkdir -p /artemis/.local/share && \
-	mkdir /data && \
-	chown -R artemis:artemis /data && \
-	ln -s /data /artemis/.local/share/artemis && \
-  apt-get update && apt-get install -y netcat
 
-USER artemis
-EXPOSE 30333 9933 9944
-VOLUME ["/data"]
+RUN apt-get update && apt-get install -y netcat curl
+
 COPY ./docker/rococo-local.json .
 COPY ./docker/spec.json .
+COPY ./docker/wait-for.sh .
+COPY ./docker/update_spec.sh .
+COPY ./docker/overrideParachainSpec.js .
+COPY ./docker/transformEthHeader.js .
+COPY ./docker/package.json .
+RUN npm install
+
+EXPOSE 30333 9933 9944
+VOLUME ["/data"]
 
 EXPOSE 30333 9933 9944

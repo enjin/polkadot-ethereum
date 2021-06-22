@@ -9,7 +9,9 @@ RUN npm install -g truffle --dotenv-extended --unsafe-perm=true --allow-root
 #WORKDIR /apps
 COPY . .
 COPY --from=builder "/app/ganache-core.docker.cli.js" "./ganache-core.docker.cli.js"
+COPY --from=builder "/app/ganache-core.docker.cli.js.map" "./ganache-core.docker.cli.js.map"
 COPY env.template .env
+ENV DOCKER true
 RUN yarn install
 #COPY --from=builder "/app/truffle" "./truffle"
 ENTRYPOINT ["/bin/sh", "-c"]
