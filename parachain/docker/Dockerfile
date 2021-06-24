@@ -16,7 +16,6 @@ ARG PROFILE=release
 USER root
 COPY --from=builder /artemis/target/$PROFILE/artemis /usr/local/bin
 
-
 RUN apt-get update && apt-get install -y netcat curl
 
 COPY ./docker/rococo-local.json .
@@ -26,9 +25,8 @@ COPY ./docker/update_spec.sh .
 COPY ./docker/overrideParachainSpec.js .
 COPY ./docker/transformEthHeader.js .
 COPY ./docker/package.json .
-RUN npm install
+RUN apt-get update && apt-get install -y netcat curl && npm install
 
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
-
-EXPOSE 30333 9933 9944
+ENTRYPOINT ["/bin/sh", "-c"]

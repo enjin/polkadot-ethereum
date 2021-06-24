@@ -1,1 +1,0 @@
-docker run -v parachainvol:/data --network host -it test/artemis:latest bash -c "/usr/local/bin/artemis --tmp --ws-port=11144 --port=31200 --execution=native --rpc-cors=all --parachain-id=200 --chain=/data/spec.json --collator -- --chain=/data/rococo-local-raw.json"

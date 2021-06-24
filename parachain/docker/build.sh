@@ -12,6 +12,4 @@ time docker build -f ./docker/Dockerfile --build-arg RUSTC_WRAPPER= --build-arg 
 
 # Show the list of available images for this repo
 echo "Image is ready"
-docker images | grep ${GITREPO}
-
 popd
