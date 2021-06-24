@@ -23,7 +23,7 @@ COPY env.template .env
 ENV DOCKER true
 RUN apt-get update && apt-get -y upgrade && apt-get -y install netcat git procps && \
     npm install -g truffle --dotenv-extended --unsafe-perm=true --allow-root && \
-    yarn install
+    yarn install --production && yarn cache clean
 
 EXPOSE 8545
 ENTRYPOINT ["/bin/sh", "-c"]
