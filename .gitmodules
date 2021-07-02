@@ -1,0 +1,3 @@
+[submodule "docker/polkadot-launch"]
+	path = docker/polkadot-launch
+	url = git@github.com:conectado/polkadot-launch.git

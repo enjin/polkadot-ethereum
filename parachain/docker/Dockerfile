@@ -19,9 +19,8 @@ COPY --from=builder /artemis/target/$PROFILE/artemis /usr/local/bin
 RUN apt-get update && apt-get install -y netcat curl
 
 COPY ./docker/rococo-local.json .
-COPY ./docker/spec.json .
 COPY ./docker/wait-for.sh .
-COPY ./docker/update_spec.sh .
+COPY ./docker/create_parachain_spec.sh .
 COPY ./docker/overrideParachainSpec.js .
 COPY ./docker/transformEthHeader.js .
 COPY ./docker/package.json .

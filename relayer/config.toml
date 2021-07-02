@@ -1,21 +1,22 @@
 [ethereum]
-endpoint = "ws://172.28.1.4:8545/"
+endpoint = "ws://etherum:8545/"
+startblock = 1
 descendants-until-final = 3
-lightclientbridge = "0x83428c7db9815f482a39a1715684dCF755021997"
+beefylightclient = "0x83428c7db9815f482a39a1715684dCF755021997"
 
 [ethereum.channels.basic]
-inbound = "0xF8F7758FbcEfd546eAEff7dE24AFf666B6228e73"
-outbound = "0xEE9170ABFbf9421Ad6DD07F6BDec9D89F2B581E0"
+inbound = "0xEE9170ABFbf9421Ad6DD07F6BDec9D89F2B581E0"
+outbound = "0xB1185EDE04202fE62D38F5db72F71e38Ff3E8305"
 
 [ethereum.channels.incentivized]
-inbound = "0xB1185EDE04202fE62D38F5db72F71e38Ff3E8305"
-outbound = "0xB8EA8cB425d85536b158d661da1ef0895Bb92F1D"
+inbound = "0xB8EA8cB425d85536b158d661da1ef0895Bb92F1D"
+outbound = "0x8cF6147918A5CBb672703F879f385036f8793a24"
 
 [parachain]
-endpoint = "ws://172.28.1.3:11144/"
+endpoint = "ws://node_parachain:11144/"
 
 [relaychain]
-endpoint = "ws://172.28.1.1:9944/"
+endpoint = "ws://node_alice:9944/"
 
 [database]
 dialect = "sqlite3"
