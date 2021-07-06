@@ -30,6 +30,21 @@ services:
       testing_net:
         ipv4_address: 172.28.1.2
 
+  node_charlie:
+    build:
+      context: .
+    ports:
+      - "30777:30777"
+      - "9939:9939"
+      - "9966:9966"
+    image: efinity/polkadot-nc:latest
+    volumes:
+      - "parachainvol:/data"
+    command: ["nc -v -l -p 1234 && polkadot --chain=/data/rococo-local-raw.json --tmp --charlie --port 30777 --rpc-external --ws-external --rpc-port 9939 --ws-port 9966 --enable-offchain-indexing=true --offchain-worker=Always"]
+    networks:
+      testing_net:
+        ipv4_address: 172.28.1.8
+
   node_parachain:
     build:
       context: ../parachain
@@ -92,7 +107,7 @@ services:
     volumes:
       - "parachainvol:/data"
     image : efinity/polkadot-nc:latest
-    command: ['nc -l -v -p 1234 && ./create_spec.sh && cp rococo-local-raw.json /data/rococo-local-raw.json && echo 1 | nc -q 0 172.28.1.1 1234 && echo 1 | nc -q 0 172.28.1.2 1234 && echo 1 | nc -q 0 172.28.1.3 1234']
+    command: ['nc -l -v -p 1234 && ./create_spec.sh && cp rococo-local-raw.json /data/rococo-local-raw.json && echo 1 | nc -q 0 172.28.1.1 1234 && echo 1 | nc -q 0 172.28.1.2 1234 && echo 1 | nc -q 0 172.28.1.3 1234 && echo 1 | nc -q 0 172.28.1.8 1234']
     networks:
       testing_net:
         ipv4_address: 172.28.1.6

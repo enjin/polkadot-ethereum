@@ -11,6 +11,7 @@ COPY docker/start_ganache.sh .
 COPY docker/wait-for .
 COPY docker/truffle-config.js .
 COPY package.json  .
+COPY yarn.lock .
 COPY scripts scripts
 COPY contracts contracts
 COPY migrations migrations

@@ -20,6 +20,15 @@
           "--enable-offchain-indexing=true",
           "--offchain-worker=Always"
         ]
+      },
+      {
+        "name": "charlie",
+        "wsPort": 9966,
+        "port": 30777,
+        "flags": [
+          "--enable-offchain-indexing=true",
+          "--offchain-worker=Always"
+        ]
       }
     ]
   },
