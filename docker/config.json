@@ -20,6 +20,15 @@
           "--enable-offchain-indexing=true",
           "--offchain-worker=Always"
         ]
+      },
+      {
+        "name": "charlie",
+        "wsPort": 9988,
+        "port": 30888,
+        "flags": [
+          "--enable-offchain-indexing=true",
+          "--offchain-worker=Always"
+        ]
       }
     ]
   },
@@ -34,6 +43,28 @@
           "wsPort": 9966,
           "port": 30666,
           "name": "alice",
+          "flags": [
+            "-lruntime=debug",
+            "--rpc-cors=all",
+            "--offchain-worker=Always",
+            "--enable-offchain-indexing=true",
+            "--execution=native",
+            "--",
+            "--execution=wasm"
+          ]
+        }
+      ]
+    },
+    {
+      "chain": "/data/spec-efinity.json",
+      "genesisStatePath": "/data/genesisState-collator",
+      "genesisWasmPath": "/data/genesisWasm-collator",
+      "id": "2000",
+      "nodes": [
+        {
+          "wsPort": 9977,
+          "port": 30777,
+          "name": "bob",
           "flags": [
             "-lruntime=debug",
             "--rpc-cors=all",
