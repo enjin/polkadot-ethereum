@@ -4,7 +4,8 @@ LABEL description="This is the build stage for Artemis. Here we create the binar
 ARG PROFILE=release
 WORKDIR /artemis
 
-COPY . /artemis
+COPY ./parachain /artemis
+COPY ./polkadot /polkadot
 
 RUN cargo build --$PROFILE --no-default-features --features with-local-runtime
 
@@ -18,11 +19,11 @@ COPY --from=builder /artemis/target/$PROFILE/artemis /usr/local/bin
 
 RUN apt-get update && apt-get install -y netcat curl
 
-COPY ./docker/wait-for.sh .
-COPY ./docker/create_parachain_spec.sh .
-COPY ./docker/overrideParachainSpec.js .
-COPY ./docker/transformEthHeader.js .
-COPY ./docker/package.json .
+COPY ./parachain/docker/wait-for.sh .
+COPY ./parachain/docker/create_parachain_spec.sh .
+COPY ./parachain/docker/overrideParachainSpec.js .
+COPY ./parachain/docker/transformEthHeader.js .
+COPY ./parachain/docker/package.json .
 RUN apt-get update && apt-get install -y netcat curl && npm install
 
 EXPOSE 30333 9933 9944

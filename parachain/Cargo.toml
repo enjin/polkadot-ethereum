@@ -83,6 +83,14 @@ local-runtime = { path = "runtime/local", optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.4" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.4" }
 
+[patch.'https://github.com/paritytech/polkadot.git']
+polkadot-primitives = { git = "https://github.com/conectado/polkadot.git", branch = "debug" }
+polkadot-parachain = { git = "https://github.com/conectado/polkadot.git", branch = "debug" }
+polkadot-core-primitives = { git = "https://github.com/conectado/polkadot.git", branch = "debug" }
+xcm = { git = "https://github.com/conectado/polkadot.git", branch = "debug" }
+xcm-executor = { git = "https://github.com/conectado/polkadot.git", branch = "debug" }
+xcm-builder = { git = "https://github.com/conectado/polkadot.git", branch = "debug" }
+
 [build-dependencies]
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.4" }
 

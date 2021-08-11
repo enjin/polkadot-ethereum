@@ -6505,7 +6505,7 @@ dependencies = [
 [[package]]
 name = "polkadot-core-primitives"
 version = "0.9.4"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.4#2f28561a09aab0613b5f8a68fbabf723d5fc197e"
+source = "git+https://github.com/conectado/polkadot.git?branch=debug#4960660141472102b6f577fd01d0d2ce24b6b4d5"
 dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
@@ -6923,7 +6923,7 @@ dependencies = [
 [[package]]
 name = "polkadot-parachain"
 version = "0.9.4"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.4#2f28561a09aab0613b5f8a68fbabf723d5fc197e"
+source = "git+https://github.com/conectado/polkadot.git?branch=debug#4960660141472102b6f577fd01d0d2ce24b6b4d5"
 dependencies = [
  "derive_more",
  "parity-scale-codec",
@@ -6938,7 +6938,7 @@ dependencies = [
 [[package]]
 name = "polkadot-primitives"
 version = "0.9.4"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.4#2f28561a09aab0613b5f8a68fbabf723d5fc197e"
+source = "git+https://github.com/conectado/polkadot.git?branch=debug#4960660141472102b6f577fd01d0d2ce24b6b4d5"
 dependencies = [
  "bitvec",
  "frame-system",
@@ -11987,21 +11987,23 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.9.4"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.4#2f28561a09aab0613b5f8a68fbabf723d5fc197e"
+source = "git+https://github.com/conectado/polkadot.git?branch=debug#4960660141472102b6f577fd01d0d2ce24b6b4d5"
 dependencies = [
  "derivative",
  "impl-trait-for-tuples",
+ "log",
  "parity-scale-codec",
 ]
 
 [[package]]
 name = "xcm-builder"
 version = "0.9.4"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.4#2f28561a09aab0613b5f8a68fbabf723d5fc197e"
+source = "git+https://github.com/conectado/polkadot.git?branch=debug#4960660141472102b6f577fd01d0d2ce24b6b4d5"
 dependencies = [
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
+ "log",
  "pallet-transaction-payment",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -12016,7 +12018,7 @@ dependencies = [
 [[package]]
 name = "xcm-executor"
 version = "0.9.4"
-source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.4#2f28561a09aab0613b5f8a68fbabf723d5fc197e"
+source = "git+https://github.com/conectado/polkadot.git?branch=debug#4960660141472102b6f577fd01d0d2ce24b6b4d5"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
